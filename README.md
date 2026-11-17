@@ -36,7 +36,7 @@ Built with **Next.js** (hosted on **Vercel**) and **Supabase** (sign-in, databas
 3. Open <http://localhost:3000>.
 
 ### 3. Make yourself the first admin
-1. On the site, click **Ask to join** and sign up with your email. (Confirm the email if Supabase sends you a link.)
+1. On the site, click **Create account** (under "or use email") and sign up with your email. (Confirm the email if Supabase sends you a link.)
 2. In Supabase **SQL Editor**, run this with your own email:
    ```sql
    update public.profiles set role = 'admin' where email = 'you@example.com';

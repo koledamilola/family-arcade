@@ -131,6 +131,25 @@ function GrownUpForms({ next }: { next: string }) {
         <span className="h-0.5 flex-1 bg-ink/15" /> or use email <span className="h-0.5 flex-1 bg-ink/15" />
       </div>
 
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => setMode("signin")}
+          aria-pressed={mode === "signin"}
+          className={`btn btn-sm ${mode === "signin" ? "btn-ocean" : "btn-white"}`}
+        >
+          I have an account
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("signup")}
+          aria-pressed={mode === "signup"}
+          className={`btn btn-sm ${mode === "signup" ? "btn-mint" : "btn-white"}`}
+        >
+          ✨ Create account
+        </button>
+      </div>
+
       {mode === "signin" ? (
         <form action={inAction} className="space-y-3">
           <input type="hidden" name="next" value={next} />
@@ -146,12 +165,6 @@ function GrownUpForms({ next }: { next: string }) {
           <button className="btn btn-ocean w-full py-3" disabled={inPending}>
             {inPending ? "Signing in…" : "Sign in"}
           </button>
-          <p className="text-center text-sm">
-            New here?{" "}
-            <button type="button" className="font-bold text-ocean underline" onClick={() => setMode("signup")}>
-              Ask to join
-            </button>
-          </p>
         </form>
       ) : (
         <form action={upAction} className="space-y-3">
@@ -181,16 +194,10 @@ function GrownUpForms({ next }: { next: string }) {
                 />
               </div>
               <button className="btn btn-mint w-full py-3" disabled={upPending}>
-                {upPending ? "Sending…" : "Request to join"}
+                {upPending ? "Creating…" : "Create account"}
               </button>
             </>
           )}
-          <p className="text-center text-sm">
-            Already approved?{" "}
-            <button type="button" className="font-bold text-ocean underline" onClick={() => setMode("signin")}>
-              Sign in
-            </button>
-          </p>
         </form>
       )}
       <p className="text-center text-xs text-ink/50">New accounts wait for a family admin to say yes.</p>
