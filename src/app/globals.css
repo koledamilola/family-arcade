@@ -1,26 +1,106 @@
 @import "tailwindcss";
 
+@theme {
+  --font-display: var(--font-fredoka), ui-rounded, "Segoe UI", system-ui, sans-serif;
+  --font-sans: var(--font-nunito), ui-rounded, "Segoe UI", system-ui, sans-serif;
+
+  --color-ink: #1e1b4b;
+  --color-cream: #fffbf0;
+  --color-sunny: #ffd23f;
+  --color-sky: #3bceac;
+  --color-ocean: #4d8bff;
+  --color-berry: #ee4266;
+  --color-grape: #8e44ec;
+  --color-mint: #0ead69;
+  --color-tangerine: #ff8c42;
+
+  --shadow-pop: 4px 4px 0 0 var(--color-ink);
+  --shadow-pop-sm: 2px 2px 0 0 var(--color-ink);
+  --shadow-pop-lg: 6px 6px 0 0 var(--color-ink);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--color-cream);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  background-color: var(--color-cream);
+  background-image:
+    radial-gradient(circle at 12% 18%, rgb(255 210 63 / 0.35) 0 2px, transparent 3px),
+    radial-gradient(circle at 78% 8%, rgb(238 66 102 / 0.3) 0 2px, transparent 3px),
+    radial-gradient(circle at 45% 60%, rgb(77 139 255 / 0.3) 0 2px, transparent 3px),
+    radial-gradient(circle at 90% 75%, rgb(14 173 105 / 0.3) 0 2px, transparent 3px);
+  background-size: 160px 160px;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+}
+
+@layer components {
+  .card {
+    @apply rounded-3xl border-[3px] border-ink bg-white shadow-pop;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl border-[3px] border-ink px-4 py-2 font-display text-base font-semibold shadow-pop-sm transition-all duration-100 select-none;
+    @apply hover:-translate-y-0.5 hover:shadow-pop active:translate-y-0.5 active:shadow-none;
+    @apply disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-sunny { @apply bg-sunny text-ink; }
+  .btn-berry { @apply bg-berry text-white; }
+  .btn-ocean { @apply bg-ocean text-white; }
+  .btn-mint { @apply bg-mint text-white; }
+  .btn-grape { @apply bg-grape text-white; }
+  .btn-white { @apply bg-white text-ink; }
+  .btn-sm { @apply rounded-xl px-3 py-1 text-sm; }
+
+  .input {
+    @apply w-full rounded-2xl border-[3px] border-ink bg-white px-4 py-2.5 text-base outline-none transition;
+    @apply placeholder:text-ink/40 focus:shadow-pop-sm focus:ring-4 focus:ring-sunny/60;
+  }
+  .label {
+    @apply mb-1.5 block font-display text-sm font-semibold;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border-2 border-ink bg-white px-3 py-1 text-sm font-bold whitespace-nowrap transition;
+  }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-wiggle { animation: wiggle 1.2s ease-in-out infinite; }
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-pop-in { animation: pop-in 0.35s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-wiggle, .animate-float, .animate-pop-in { animation: none; }
+}
+
+/* Fullscreen game area */
+.game-stage:fullscreen {
+  background: #000;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+.game-stage:fullscreen iframe {
+  height: 100vh !important;
+  aspect-ratio: auto !important;
+  border-radius: 0;
 }

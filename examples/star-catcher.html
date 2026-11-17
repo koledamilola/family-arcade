@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Star Catcher</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #1e1b4b; overflow: hidden; font-family: system-ui, sans-serif; touch-action: none; }
+    canvas { display: block; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// Star Catcher: a tiny sample game for testing Family Arcade uploads.
+// Move with arrow keys / A-D, by touch-dragging, or with a controller stick.
+// It saves your best score with localStorage and sends scores to the leaderboard.
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+let W, H;
+function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+addEventListener("resize", resize); resize();
+
+let best = Number(localStorage.getItem("starCatcherBest") || 0);
+let player, stars, score, lives, running, keys = {}, touchX = null, spawnTimer;
+
+function reset() {
+  player = { x: W / 2, w: 90 };
+  stars = []; score = 0; lives = 3; running = true; spawnTimer = 0;
+}
+reset();
+
+addEventListener("keydown", (e) => { keys[e.key] = true; if (!running && (e.key === " " || e.key === "Enter")) reset(); });
+addEventListener("keyup", (e) => { keys[e.key] = false; });
+addEventListener("pointerdown", (e) => { touchX = e.clientX; if (!running) reset(); });
+addEventListener("pointermove", (e) => { if (touchX !== null) touchX = e.clientX; });
+addEventListener("pointerup", () => { touchX = null; });
+
+function gameOver() {
+  running = false;
+  if (score > best) { best = score; localStorage.setItem("starCatcherBest", String(best)); }
+  // Send the score to the Family Arcade leaderboard (does nothing outside the arcade).
+  if (window.FamilyArcade) window.FamilyArcade.submitScore(score);
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const pad = navigator.getGamepads ? [...navigator.getGamepads()].find(Boolean) : null;
+  if (pad && !running && pad.buttons[0]?.pressed) reset();
+  if (running) {
+    let dx = 0;
+    if (keys.ArrowLeft || keys.a) dx -= 1;
+    if (keys.ArrowRight || keys.d) dx += 1;
+    if (pad && Math.abs(pad.axes[0]) > 0.2) dx += pad.axes[0];
+    player.x += dx * 600 * dt;
+    if (touchX !== null) player.x += (touchX - player.x) * Math.min(1, dt * 12);
+    player.x = Math.max(player.w / 2, Math.min(W - player.w / 2, player.x));
+
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      spawnTimer = Math.max(0.25, 0.9 - score * 0.01);
+      const bad = Math.random() < 0.2;
+      stars.push({ x: 20 + Math.random() * (W - 40), y: -20, v: 160 + Math.random() * 120 + score * 3, bad });
+    }
+    for (const s of stars) {
+      s.y += s.v * dt;
+      if (s.y > H - 60 && s.y < H - 20 && Math.abs(s.x - player.x) < player.w / 2 + 12) {
+        s.hit = true;
+        if (s.bad) { lives--; if (lives <= 0) gameOver(); } else score++;
+      }
+    }
+    stars = stars.filter((s) => !s.hit && s.y < H + 30);
+  }
+
+  ctx.fillStyle = "#1e1b4b"; ctx.fillRect(0, 0, W, H);
+  ctx.font = "28px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const s of stars) ctx.fillText(s.bad ? "💣" : "⭐", s.x, s.y);
+  ctx.fillStyle = "#ffd23f";
+  ctx.beginPath(); ctx.roundRect(player.x - player.w / 2, H - 50, player.w, 22, 11); ctx.fill();
+
+  ctx.fillStyle = "#fff"; ctx.textAlign = "left"; ctx.font = "bold 22px system-ui";
+  ctx.fillText(`⭐ ${score}`, 16, 28);
+  ctx.fillText("❤️".repeat(Math.max(0, lives)), 16, 58);
+  ctx.textAlign = "right"; ctx.fillText(`Best: ${best}`, W - 16, 28);
+
+  if (!running) {
+    ctx.textAlign = "center"; ctx.font = "bold 44px system-ui"; ctx.fillStyle = "#ffd23f";
+    ctx.fillText("Game over!", W / 2, H / 2 - 30);
+    ctx.font = "22px system-ui"; ctx.fillStyle = "#fff";
+    ctx.fillText(`You caught ${score} stars. Press Space or tap to play again`, W / 2, H / 2 + 20);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
