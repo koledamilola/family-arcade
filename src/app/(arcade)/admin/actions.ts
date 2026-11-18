@@ -12,6 +12,7 @@ import {
 } from "@/lib/auth";
 import { CATEGORIES, COVER_COLORS, slugify } from "@/lib/catalog";
 import { createAdminClient } from "@/lib/supabase/server";
+import { getOrigin } from "@/lib/origin";
 import type { GameKind, Role } from "@/lib/types";
 
 type Result<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
@@ -147,6 +148,11 @@ export async function saveGame(input: GameInput): Promise<Result<{ id: string; s
     if (input.kind === "url") {
       const u = new URL(input.external_url ?? "");
       if (u.protocol !== "https:" && u.protocol !== "http:") throw new Error("The game link must start with https://");
+      // Linked games get "allow-same-origin" in their sandbox, which is only safe
+      // for other websites. A page on this site would get full access to it.
+      if (u.origin === new URL(await getOrigin()).origin) {
+        throw new Error("Games on this site must be uploaded, not linked.");
+      }
     } else if (!input.storage_prefix || !input.entry_path) {
       throw new Error("Please upload the game files.");
     }
@@ -345,10 +351,12 @@ export async function resetKidPin(userId: string, pin: string): Promise<Result> 
     await assertAdmin();
     if (!PIN_RE.test(pin)) throw new Error("PINs are 4 to 8 numbers.");
     const admin = createAdminClient();
-    const { data: profile } = await admin.from("profiles").select("is_kid").eq("id", userId).single();
+    const { data: profile } = await admin.from("profiles").select("is_kid, username").eq("id", userId).single();
     if (!profile?.is_kid) throw new Error("Only kid accounts use PINs.");
     const { error } = await admin.auth.admin.updateUserById(userId, { password: kidPassword(pin) });
     if (error) throw new Error(error.message);
+    // A fresh PIN also lifts any wrong-PIN lockout.
+    if (profile.username) await admin.from("kid_login_failures").delete().eq("username", profile.username);
     return { ok: true };
   } catch (e) {
     return fail(e);
