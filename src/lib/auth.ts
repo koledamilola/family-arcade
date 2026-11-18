@@ -1,7 +1,9 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { createHmac } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
+import { getSecretKey } from "@/lib/env";
 import type { Profile } from "@/lib/types";
 
 /** The signed-in visitor and their profile (null if signed out). */
@@ -49,8 +51,21 @@ export function kidEmail(username: string) {
   return `${username.toLowerCase()}@${KID_EMAIL_DOMAIN}`;
 }
 
+/**
+ * The Supabase password for a kid's PIN. It is mixed with a server-only secret,
+ * so knowing (or guessing) a 4-digit PIN is useless against Supabase directly:
+ * the only way to try a PIN is through this site's login, which is rate limited.
+ *
+ * Uses KID_PIN_SECRET if set, otherwise the Supabase secret key. If that secret
+ * ever changes, kids need their PIN reset by an admin.
+ */
 export function kidPassword(pin: string) {
-  // Supabase needs at least 6 characters, so the PIN is padded.
+  const secret = process.env.KID_PIN_SECRET || getSecretKey();
+  return "fa-kid-v2-" + createHmac("sha256", secret).update(`family-arcade-kid-pin:${pin}`).digest("base64url");
+}
+
+/** The old, guessable password format. Only used to upgrade existing kid accounts. */
+export function legacyKidPassword(pin: string) {
   return `fa-kid-pin-${pin}`;
 }
 

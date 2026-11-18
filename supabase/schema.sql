@@ -206,6 +206,17 @@ $$;
 revoke execute on function public.record_play(uuid) from anon;
 revoke execute on function public.game_leaderboard(uuid) from anon;
 
+-- ---------- Kid login lockout -----------------------------------------
+-- Counts wrong PINs per kid username so PINs can't be guessed one by one.
+-- Only the website's server (secret key) uses this; nobody else can read it.
+create table if not exists public.kid_login_failures (
+  username     text primary key,
+  failures     integer not null default 0,
+  locked_until timestamptz
+);
+alter table public.kid_login_failures enable row level security;
+revoke all on public.kid_login_failures from anon, authenticated;
+
 -- ---------- File storage ----------------------------------------------
 -- "games" holds uploaded game files; "thumbnails" holds cover pictures.
 -- Uploads only happen through the website's server (with the secret key),
