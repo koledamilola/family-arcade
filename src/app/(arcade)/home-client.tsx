@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { Heart, Search, Star, Play, Gamepad2, Smartphone, Trophy } from "lucide-react";
 import { GameCover } from "@/components/GameCover";
-import { CATEGORIES, categoryEmoji } from "@/lib/catalog";
+import { CATEGORIES, cartridgeColor, categoryEmoji } from "@/lib/catalog";
 import type { GameCard } from "@/lib/types";
 import { setFavorite, setLiked } from "./actions";
 
@@ -84,84 +84,96 @@ export function HomeClient({
 
   const totalPlays = games.reduce((n, g) => n + g.play_count, 0);
   const creators = new Set(games.map((g) => g.creator_name).filter(Boolean)).size;
+  const newest = games[0];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
-      {/* Hero */}
-      <section className="card relative overflow-hidden bg-ocean p-6 text-white sm:p-8">
-        <div aria-hidden className="pointer-events-none absolute -top-6 -right-4 text-[9rem] opacity-20 sm:text-[12rem]">
-          🎮
-        </div>
-        <p className="font-display text-lg font-semibold text-sunny">Hi {name}! 👋</p>
-        <h1 className="mt-1 max-w-2xl text-3xl font-bold leading-tight sm:text-5xl">What are we playing today?</h1>
-        <div className="mt-5 flex flex-wrap gap-2 sm:gap-3">
-          <Stat emoji="🕹️" value={games.length} label={games.length === 1 ? "game" : "games"} />
-          <Stat emoji="🎨" value={creators} label={creators === 1 ? "game maker" : "game makers"} />
-          <Stat emoji="🔥" value={totalPlays} label="plays" />
-        </div>
-      </section>
-
-      {/* Filters */}
-      <section className="mt-6 space-y-3" aria-label="Find a game">
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <label className="relative flex-1">
-            <span className="sr-only">Search games</span>
-            <Search className="pointer-events-none absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-ink/50" />
-            <input
-              className="input pl-12 text-lg"
-              placeholder="Search games, makers…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </label>
-          <label className="flex items-center gap-2 font-display font-semibold">
-            Sort
-            <select className="input w-auto py-2" value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
-              <option value="new">✨ Newest</option>
-              <option value="played">🔥 Most played</option>
-              <option value="liked">💖 Most liked</option>
-              <option value="az">🔤 A to Z</option>
-            </select>
-          </label>
-        </div>
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          <FilterChip active={!category && !onlyFavorites} onClick={() => { setCategory(null); setOnlyFavorites(false); }}>
-            🌈 All
-          </FilterChip>
-          <FilterChip active={onlyFavorites} onClick={() => setOnlyFavorites((v) => !v)}>
-            ⭐ My favorites
-          </FilterChip>
-          {usedCategories.map((c) => (
-            <FilterChip
-              key={c.name}
-              active={category === c.name}
-              onClick={() => setCategory((cur) => (cur === c.name ? null : c.name))}
-            >
-              {c.emoji} {c.name}
-            </FilterChip>
-          ))}
+    <main>
+      {/* Hero: the carpet band */}
+      <section className="carpet">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pt-8 pb-12 sm:pt-12 sm:pb-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+          <div>
+            <p className="font-display text-lg font-semibold text-sunny sm:text-xl">Hi {name}! 👋</p>
+            <h1 className="mt-2 max-w-xl text-4xl leading-[1.05] sm:text-6xl">What are we playing today?</h1>
+            {games.length > 0 && (
+              <p className="mt-5 max-w-md text-lg text-white/80">
+                <Num>{games.length}</Num> {games.length === 1 ? "game" : "games"}
+                {creators > 0 && (
+                  <>
+                    {" "}from <Num>{creators}</Num> {creators === 1 ? "game maker" : "game makers"}
+                  </>
+                )}
+                , played <Num>{totalPlays}</Num> {totalPlays === 1 ? "time" : "times"}.
+              </p>
+            )}
+          </div>
+          {newest && <Spotlight game={newest} />}
         </div>
       </section>
+      <div className="bulbs" aria-hidden />
 
-      {/* Grid */}
-      {shown.length === 0 ? (
-        <EmptyState hasGames={games.length > 0} isAdmin={isAdmin} favorites={onlyFavorites} />
-      ) : (
-        <ul className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {shown.map((g, i) => (
-            <li key={g.id} className="animate-pop-in" style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}>
-              <GameTile
-                game={g}
-                liked={liked.has(g.id)}
-                favorite={faves.has(g.id)}
-                likes={g.like_count + (likeDelta[g.id] ?? 0)}
-                onLike={() => toggleLike(g.id)}
-                onFave={() => toggleFave(g.id)}
+      <div className="mx-auto max-w-7xl px-4">
+        {/* Filters */}
+        <section className="mt-8 space-y-3" aria-label="Find a game">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <label className="relative flex-1">
+              <span className="sr-only">Search games</span>
+              <Search className="pointer-events-none absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-ink/50" />
+              <input
+                className="input pl-12 text-lg"
+                placeholder="Search games or makers"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
               />
-            </li>
-          ))}
-        </ul>
-      )}
+            </label>
+            <label className="flex items-center gap-2 font-display font-semibold">
+              Sort
+              <select className="input w-auto py-2" value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+                <option value="new">✨ Newest</option>
+                <option value="played">🔥 Most played</option>
+                <option value="liked">💖 Most liked</option>
+                <option value="az">🔤 A to Z</option>
+              </select>
+            </label>
+          </div>
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pt-0.5 pb-2">
+            <FilterChip active={!category && !onlyFavorites} onClick={() => { setCategory(null); setOnlyFavorites(false); }}>
+              🌈 All
+            </FilterChip>
+            <FilterChip active={onlyFavorites} onClick={() => setOnlyFavorites((v) => !v)}>
+              ⭐ My favorites
+            </FilterChip>
+            {usedCategories.map((c) => (
+              <FilterChip
+                key={c.name}
+                active={category === c.name}
+                onClick={() => setCategory((cur) => (cur === c.name ? null : c.name))}
+              >
+                {c.emoji} {c.name}
+              </FilterChip>
+            ))}
+          </div>
+        </section>
+
+        {/* Shelf of cartridges */}
+        {shown.length === 0 ? (
+          <EmptyState hasGames={games.length > 0} isAdmin={isAdmin} favorites={onlyFavorites} />
+        ) : (
+          <ul className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {shown.map((g) => (
+              <li key={g.id}>
+                <GameTile
+                  game={g}
+                  liked={liked.has(g.id)}
+                  favorite={faves.has(g.id)}
+                  likes={g.like_count + (likeDelta[g.id] ?? 0)}
+                  onLike={() => toggleLike(g.id)}
+                  onFave={() => toggleFave(g.id)}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </main>
   );
 }
@@ -173,14 +185,9 @@ function toggled(set: Set<string>, id: string, on: boolean) {
   return next;
 }
 
-function Stat({ emoji, value, label }: { emoji: string; value: number; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-2xl border-2 border-ink bg-white px-3 py-1.5 font-display font-semibold text-ink shadow-pop-sm">
-      <span aria-hidden>{emoji}</span>
-      <span className="text-lg">{value.toLocaleString()}</span>
-      <span className="text-ink/70">{label}</span>
-    </span>
-  );
+
+function Num({ children }: { children: number }) {
+  return <strong className="font-marquee font-normal text-sunny">{children.toLocaleString()}</strong>;
 }
 
 function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -189,10 +196,47 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`chip ${active ? "bg-sunny shadow-pop-sm" : "hover:bg-cream"}`}
+      className={`chip ${active ? "bg-ink text-white" : "hover:bg-cream"}`}
     >
       {children}
     </button>
+  );
+}
+
+/** The newest game, shown big in the hero as a cartridge sliding into place. */
+function Spotlight({ game }: { game: GameCard }) {
+  return (
+    <Link
+      href={`/play/${game.slug}`}
+      className="group animate-slot-in relative mx-auto block w-full max-w-lg rounded-[26px] border-2 border-ink p-3 pb-0 shadow-pop-lg"
+      style={{ background: cartridgeColor(game.cover_color) }}
+    >
+      <span className="absolute -top-4 -left-3 z-10 -rotate-6 rounded-lg border-2 border-ink bg-sunny px-3 py-0.5 font-hand text-xl text-ink">
+        Just added!
+      </span>
+      <div className="overflow-hidden rounded-2xl border-2 border-ink bg-white text-ink">
+        <div className="aspect-video overflow-hidden border-b-2 border-ink">
+          <GameCover
+            title={game.title}
+            thumbnailUrl={game.thumbnail_url}
+            emoji={game.cover_emoji}
+            color={game.cover_color}
+            className="transition duration-300 group-hover:scale-[1.03]"
+          />
+        </div>
+        <div className="flex items-center gap-4 p-4">
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-2xl font-bold leading-tight">{game.title}</h2>
+            {game.creator_name && <p className="mt-0.5 truncate font-hand text-2xl text-grape">made by {game.creator_name}</p>}
+          </div>
+          <span className="arcade-btn h-16 w-16 text-sm">
+            <Play className="h-6 w-6 fill-current" aria-hidden />
+            <span className="sr-only">Play {game.title}</span>
+          </span>
+        </div>
+      </div>
+      <div className="ridges mx-10 my-2.5 h-3" aria-hidden />
+    </Link>
   );
 }
 
@@ -212,65 +256,73 @@ function GameTile({
   onFave: () => void;
 }) {
   return (
-    <article className="card group flex h-full flex-col overflow-hidden transition hover:-translate-y-1 hover:shadow-pop-lg">
-      <Link href={`/play/${game.slug}`} className="relative block aspect-[4/3] overflow-hidden border-b-[3px] border-ink">
-        <GameCover
-          title={game.title}
-          thumbnailUrl={game.thumbnail_url}
-          emoji={game.cover_emoji}
-          color={game.cover_color}
-          className="transition duration-300 group-hover:scale-105"
-        />
-        <span className="absolute top-3 left-3 chip bg-white/95 text-xs">
-          {categoryEmoji(game.category)} {game.category}
-        </span>
-        <span className="absolute inset-0 grid place-items-center bg-ink/0 opacity-0 transition group-hover:bg-ink/25 group-hover:opacity-100">
-          <span className="btn btn-sunny text-lg">
-            <Play className="h-5 w-5 fill-current" /> Play
+    <article
+      className="group flex h-full flex-col rounded-[20px] border-2 border-ink p-2 pb-0 shadow-pop transition duration-150 hover:-translate-y-1 hover:shadow-pop-lg"
+      style={{ background: cartridgeColor(game.cover_color) }}
+    >
+      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border-2 border-ink bg-white">
+        <Link href={`/play/${game.slug}`} className="relative block aspect-[4/3] overflow-hidden border-b-2 border-ink" tabIndex={-1} aria-hidden>
+          <GameCover
+            title={game.title}
+            thumbnailUrl={game.thumbnail_url}
+            emoji={game.cover_emoji}
+            color={game.cover_color}
+            className="transition duration-300 group-hover:scale-105"
+          />
+          <span className="chip absolute top-2.5 left-2.5 bg-white/95 text-xs">
+            {categoryEmoji(game.category)} {game.category}
           </span>
-        </span>
-      </Link>
-      <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-start gap-2">
-          <h2 className="flex-1 text-xl font-bold leading-tight">
-            <Link href={`/play/${game.slug}`} className="hover:text-ocean">
-              {game.title}
-            </Link>
-          </h2>
-          <button
-            type="button"
-            onClick={onFave}
-            aria-pressed={favorite}
-            aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
-            className="rounded-full p-1 transition hover:scale-110"
-          >
-            <Star className={`h-6 w-6 ${favorite ? "fill-sunny text-ink" : "text-ink/40"}`} strokeWidth={2.5} />
-          </button>
-        </div>
-        {game.creator_name && <p className="mt-0.5 text-sm font-bold text-grape">by {game.creator_name}</p>}
-        {game.description && <p className="mt-2 line-clamp-2 text-sm text-ink/70">{game.description}</p>}
-        <div className="mt-auto flex items-center gap-3 pt-4 text-sm font-bold text-ink/70">
-          <button
-            type="button"
-            onClick={onLike}
-            aria-pressed={liked}
-            aria-label={liked ? "Unlike" : "Like"}
-            className={`inline-flex items-center gap-1 rounded-full border-2 px-2.5 py-0.5 transition hover:scale-105 ${
-              liked ? "border-berry bg-berry text-white" : "border-ink/20 hover:border-berry"
-            }`}
-          >
-            <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} strokeWidth={2.5} /> {likes}
-          </button>
-          <span className="inline-flex items-center gap-1" title="Plays">
-            🔥 {game.play_count.toLocaleString()}
+          <span className="absolute right-3 bottom-3 opacity-0 transition group-hover:opacity-100">
+            <span className="arcade-btn h-14 w-14">
+              <Play className="h-5 w-5 fill-current" />
+            </span>
           </span>
-          <span className="ml-auto flex items-center gap-1.5 text-ink/50">
-            {game.has_scores && <Trophy className="h-4 w-4" aria-label="Has leaderboard" />}
-            {game.supports_touch && <Smartphone className="h-4 w-4" aria-label="Works on touch screens" />}
-            {game.supports_gamepad && <Gamepad2 className="h-4 w-4" aria-label="Works with controllers" />}
-          </span>
+        </Link>
+        <div className="flex flex-1 flex-col p-3.5">
+          <div className="flex items-start gap-2">
+            <h2 className="flex-1 text-lg font-bold leading-snug">
+              <Link href={`/play/${game.slug}`} className="rounded hover:text-ocean">
+                {game.title}
+              </Link>
+            </h2>
+            <button
+              type="button"
+              onClick={onFave}
+              aria-pressed={favorite}
+              aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
+              className="-mt-0.5 rounded-full p-1 transition hover:scale-110"
+            >
+              <Star className={`h-6 w-6 ${favorite ? "fill-sunny text-ink" : "text-ink/35"}`} strokeWidth={2.25} />
+            </button>
+          </div>
+          {game.creator_name && (
+            <p className="-mt-0.5 origin-left -rotate-1 font-hand text-xl leading-tight text-grape">made by {game.creator_name}</p>
+          )}
+          {game.description && <p className="mt-2 line-clamp-2 text-sm text-ink/70">{game.description}</p>}
+          <div className="mt-auto flex items-center gap-3 pt-4 text-sm font-semibold text-ink/70">
+            <button
+              type="button"
+              onClick={onLike}
+              aria-pressed={liked}
+              aria-label={liked ? "Unlike" : "Like"}
+              className={`inline-flex items-center gap-1 rounded-full border-2 px-2.5 py-0.5 transition hover:scale-105 ${
+                liked ? "border-berry bg-berry text-white" : "border-ink/20 hover:border-berry"
+              }`}
+            >
+              <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} strokeWidth={2.5} /> {likes}
+            </button>
+            <span className="inline-flex items-center gap-1" title="Plays">
+              🔥 {game.play_count.toLocaleString()}
+            </span>
+            <span className="ml-auto flex items-center gap-1.5 text-ink/45">
+              {game.has_scores && <Trophy className="h-4 w-4" aria-label="Has leaderboard" />}
+              {game.supports_touch && <Smartphone className="h-4 w-4" aria-label="Works on touch screens" />}
+              {game.supports_gamepad && <Gamepad2 className="h-4 w-4" aria-label="Works with controllers" />}
+            </span>
+          </div>
         </div>
       </div>
+      <div className="ridges mx-8 my-2 h-2.5" aria-hidden />
     </article>
   );
 }
@@ -278,15 +330,11 @@ function GameTile({
 function EmptyState({ hasGames, isAdmin, favorites }: { hasGames: boolean; isAdmin: boolean; favorites: boolean }) {
   return (
     <div className="card mt-6 flex flex-col items-center p-10 text-center">
-      <div className="animate-float text-6xl" aria-hidden>
+      <div className="text-6xl" aria-hidden>
         {favorites ? "⭐" : hasGames ? "🔍" : "🎁"}
       </div>
       <h2 className="mt-3 text-2xl font-bold">
-        {favorites
-          ? "No favorites yet"
-          : hasGames
-            ? "No games match that"
-            : "No games yet!"}
+        {favorites ? "No favorites yet" : hasGames ? "No games match that" : "No games yet!"}
       </h2>
       <p className="mt-1 text-ink/70">
         {favorites

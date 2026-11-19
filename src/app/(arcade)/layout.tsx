@@ -8,8 +8,11 @@ export default async function ArcadeLayout({ children }: LayoutProps<"/">) {
     <>
       <Header profile={profile} />
       <div className="flex-1">{children}</div>
-      <footer className="mt-12 border-t-[3px] border-ink bg-sunny py-5 text-center font-display font-semibold">
-        Made with 💖 by the {SITE_NAME} crew
+      <footer className="mt-14">
+        <div className="bulbs" aria-hidden />
+        <p className="carpet py-6 text-center font-display font-semibold">
+          Made with 💖 by the {SITE_NAME} crew
+        </p>
       </footer>
     </>
   );

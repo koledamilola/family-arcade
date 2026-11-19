@@ -1,26 +1,23 @@
 import { SITE_NAME } from "@/lib/env";
 
+/** An arcade token with the site name in marquee letters. Made for dark (carpet) backgrounds. */
 export function Logo({ size = "md" }: { size?: "md" | "lg" }) {
   const big = size === "lg";
   return (
     <span className="inline-flex items-center gap-2.5">
       <span
-        className={`grid place-items-center rounded-2xl border-[3px] border-ink bg-sunny shadow-pop-sm ${
-          big ? "h-16 w-16 text-4xl" : "h-10 w-10 text-2xl"
+        className={`grid shrink-0 place-items-center rounded-full border-2 border-ink bg-sunny ${
+          big ? "h-16 w-16 text-3xl" : "h-10 w-10 text-xl"
         }`}
+        style={{ boxShadow: "inset 0 0 0 3px #ffc83d, inset 0 0 0 5px rgb(27 20 70 / 0.35)" }}
         aria-hidden
       >
-        <span className="animate-wiggle inline-block">🕹️</span>
+        🕹️
       </span>
       <span
-        className={`font-display font-bold leading-none tracking-tight ${big ? "text-4xl sm:text-5xl" : "text-xl sm:text-2xl"}`}
+        className={`font-marquee leading-none whitespace-nowrap text-sunny ${big ? "text-[26px] sm:text-4xl" : "text-lg sm:text-2xl"}`}
       >
-        {SITE_NAME.split(" ").map((word, i) => (
-          <span key={i} className={i % 2 === 0 ? "text-berry" : "text-ocean"}>
-            {i > 0 ? " " : ""}
-            {word}
-          </span>
-        ))}
+        {SITE_NAME}
       </span>
     </span>
   );

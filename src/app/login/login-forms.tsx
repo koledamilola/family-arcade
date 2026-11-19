@@ -16,7 +16,7 @@ export function LoginForms({ next, initialError }: { next: string; initialError?
 
   return (
     <div>
-      <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl border-[3px] border-ink bg-cream p-1.5">
+      <div className="mb-5 grid grid-cols-2 gap-1.5 rounded-xl border-2 border-ink bg-cream p-1">
         <TabButton active={tab === "grownups"} onClick={() => setTab("grownups")} color="bg-ocean text-white">
           👋 Sign in
         </TabButton>
@@ -48,8 +48,8 @@ function TabButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded-xl px-3 py-2 font-display font-semibold transition ${
-        active ? `${color} shadow-pop-sm` : "text-ink/70 hover:bg-white"
+      className={`rounded-lg px-3 py-2 font-display font-semibold transition ${
+        active ? color : "text-ink/70 hover:bg-white"
       }`}
     >
       {children}
@@ -61,7 +61,7 @@ function Alert({ kind, children }: { kind: "error" | "ok"; children: React.React
   return (
     <p
       role="alert"
-      className={`mb-4 rounded-2xl border-2 px-4 py-3 text-sm font-semibold ${
+      className={`mb-4 rounded-xl border-2 px-4 py-3 text-sm font-semibold ${
         kind === "error" ? "border-berry bg-berry/10 text-berry" : "border-mint bg-mint/10 text-mint"
       }`}
     >
@@ -99,7 +99,7 @@ function KidForm({ next }: { next: string }) {
           inputMode="numeric"
           pattern="\d{4,8}"
           maxLength={8}
-          className="input text-center text-2xl tracking-[0.5em]"
+          className="input border-ink bg-ink text-center font-marquee text-3xl tracking-[0.5em] text-sunny placeholder:text-white/25 focus:border-ocean"
           autoComplete="current-password"
           placeholder="••••"
           required

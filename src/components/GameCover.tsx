@@ -27,13 +27,14 @@ export function GameCover({
     >
       <div
         aria-hidden
-        className="absolute inset-0 opacity-25"
+        className="absolute inset-0 opacity-30"
         style={{
-          backgroundImage: "radial-gradient(circle, #fff 2px, transparent 2.5px)",
-          backgroundSize: "22px 22px",
+          backgroundImage:
+            "linear-gradient(rgb(255 255 255 / 0.5) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.5) 1px, transparent 1px)",
+          backgroundSize: "20px 20px",
         }}
       />
-      <span className={`relative ${small ? "text-5xl" : "text-7xl"} drop-shadow-[3px_3px_0_rgba(30,27,75,0.5)]`} aria-hidden>
+      <span className={`relative ${small ? "text-5xl" : "text-7xl"} drop-shadow-[0_4px_0_rgba(27,20,70,0.35)]`} aria-hidden>
         {emoji}
       </span>
     </div>

@@ -24,6 +24,20 @@ export const COVER_COLORS: Record<string, string> = {
   grape: "linear-gradient(135deg, #a78bfa, #ec4899)",
 };
 
+/** Solid "plastic" colour for each game's cartridge shell, matched to its cover colour. */
+export const CARTRIDGE_COLORS: Record<string, string> = {
+  sky: "#2a9df4",
+  sunny: "#ffc83d",
+  berry: "#ff4fa3",
+  mint: "#12a866",
+  coral: "#ff7a3d",
+  grape: "#6a3bf0",
+};
+
+export function cartridgeColor(color: string) {
+  return CARTRIDGE_COLORS[color] ?? CARTRIDGE_COLORS.sky;
+}
+
 export const AVATAR_EMOJIS = ["🙂", "😎", "🦄", "🐱", "🐶", "🦊", "🐼", "🐸", "🦖", "🤖", "👽", "🐙", "🦁", "🐧", "⚡", "🌟"];
 
 export function slugify(text: string) {

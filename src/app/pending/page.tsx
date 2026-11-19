@@ -12,13 +12,13 @@ export default async function PendingPage() {
   if (viewer.profile && viewer.profile.role !== "pending") redirect("/");
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-4 py-10">
+    <main className="carpet flex flex-1 flex-col items-center justify-center px-4 py-10">
       <Logo />
-      <div className="card animate-pop-in mt-6 w-full max-w-md p-7 text-center">
-        <div className="animate-float mb-3 text-6xl" aria-hidden>
+      <div className="card mt-7 w-full max-w-md p-7 text-center text-ink">
+        <div className="mb-3 text-6xl" aria-hidden>
           ⏳
         </div>
-        <h1 className="text-3xl font-bold">Almost in!</h1>
+        <h1 className="text-3xl">Almost in!</h1>
         <p className="mt-3 text-lg text-ink/80">
           Hi <strong>{viewer.profile?.display_name ?? "there"}</strong>! A family admin needs to approve your account
           before you can play.

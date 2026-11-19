@@ -15,40 +15,16 @@ export default async function LoginPage(props: PageProps<"/login">) {
   if (viewer) redirect(viewer.profile?.role === "pending" ? "/pending" : "/");
 
   return (
-    <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-10">
-      <Decorations />
-      <div className="relative z-10 w-full max-w-md">
-        <div className="mb-6 flex flex-col items-center gap-3 text-center">
+    <main className="carpet flex flex-1 flex-col items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md">
+        <div className="mb-7 flex flex-col items-center gap-3 text-center">
           <Logo size="lg" />
-          <p className="font-display text-lg text-ink/70">Games made by our family, for our family!</p>
+          <p className="font-hand text-2xl text-white/85">Games made by our family, for our family!</p>
         </div>
-        <div className="card animate-pop-in p-5 sm:p-7">
+        <div className="card p-5 text-ink sm:p-7 [--ledge:#07051a]">
           <LoginForms next={next} initialError={error} />
         </div>
       </div>
     </main>
-  );
-}
-
-function Decorations() {
-  const items = [
-    { e: "👾", c: "left-[6%] top-[12%] text-5xl" },
-    { e: "🚀", c: "right-[8%] top-[18%] text-6xl" },
-    { e: "⭐", c: "left-[12%] bottom-[14%] text-5xl" },
-    { e: "🎯", c: "right-[10%] bottom-[10%] text-5xl" },
-    { e: "🥊", c: "left-[40%] top-[4%] text-4xl hidden sm:block" },
-  ];
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 hidden sm:block">
-      {items.map((it, i) => (
-        <span
-          key={i}
-          className={`animate-float absolute opacity-80 ${it.c}`}
-          style={{ animationDelay: `${i * 0.6}s` }}
-        >
-          {it.e}
-        </span>
-      ))}
-    </div>
   );
 }

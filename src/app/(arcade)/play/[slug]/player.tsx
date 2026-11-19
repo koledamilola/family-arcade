@@ -147,61 +147,69 @@ export function Player({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
       <section>
-        <div ref={stageRef} className="game-stage card relative overflow-hidden bg-ink p-0">
-          {frameName !== undefined ? (
-            <iframe
-              key={frameKey}
-              ref={frameRef}
-              name={game.kind === "url" ? undefined : frameName}
-              src={src}
-              title={game.title}
-              sandbox={game.kind === "url" ? `${GAME_SANDBOX} allow-same-origin` : GAME_SANDBOX}
-              allow="fullscreen; gamepad; autoplay; accelerometer; gyroscope"
-              referrerPolicy="no-referrer"
-              className="block aspect-[4/3] max-h-[78vh] w-full bg-black sm:aspect-video"
-              onLoad={focusGame}
-            />
-          ) : (
-            <div className="grid aspect-video place-items-center text-4xl text-white">⏳</div>
-          )}
-          {toast && (
-            <div
-              role="status"
-              className="animate-pop-in absolute top-3 left-1/2 -translate-x-1/2 rounded-2xl border-[3px] border-ink bg-sunny px-4 py-2 font-display font-bold shadow-pop"
+        {/* The cabinet: marquee, screen, control panel */}
+        <div className="rounded-[24px] border-2 border-ink bg-ink p-2 text-white shadow-pop-lg [--ledge:#07051a] sm:p-3">
+          <div className="flex flex-wrap items-end gap-x-4 gap-y-1 px-2 pt-1 pb-3 sm:px-3">
+            <h1 className="text-2xl leading-tight text-sunny sm:text-4xl">{game.title}</h1>
+            {game.creator_name && <p className="pb-0.5 font-hand text-2xl text-white/85">made by {game.creator_name}</p>}
+          </div>
+          <div ref={stageRef} className="game-stage relative overflow-hidden rounded-2xl border-2 border-black bg-black">
+            {frameName !== undefined ? (
+              <iframe
+                key={frameKey}
+                ref={frameRef}
+                name={game.kind === "url" ? undefined : frameName}
+                src={src}
+                title={game.title}
+                sandbox={game.kind === "url" ? `${GAME_SANDBOX} allow-same-origin` : GAME_SANDBOX}
+                allow="fullscreen; gamepad; autoplay; accelerometer; gyroscope"
+                referrerPolicy="no-referrer"
+                className="block aspect-[4/3] max-h-[78vh] w-full bg-black sm:aspect-video"
+                onLoad={focusGame}
+              />
+            ) : (
+              <div className="grid aspect-video place-items-center text-4xl text-white">⏳</div>
+            )}
+            {toast && (
+              <div
+                role="status"
+                className="animate-pop-in absolute top-3 left-1/2 -translate-x-1/2 rounded-xl border-2 border-ink bg-sunny px-4 py-2 font-display font-bold text-ink shadow-pop"
+              >
+                {toast}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 px-1 pt-3 pb-1 sm:px-2">
+            <button type="button" className="btn btn-sunny" onClick={goFullscreen}>
+              <Expand className="h-5 w-5" /> Fullscreen
+            </button>
+            <button type="button" className="btn btn-white" onClick={restart}>
+              <RotateCcw className="h-5 w-5" /> Restart
+            </button>
+            <span className="flex-1" />
+            <button
+              type="button"
+              className={`btn ${liked ? "btn-berry" : "btn-white"}`}
+              onClick={toggleLike}
+              aria-pressed={liked}
+              aria-label={liked ? `Unlike (${likes} likes)` : `Like (${likes} likes)`}
             >
-              {toast}
-            </div>
-          )}
+              <Heart className={`h-5 w-5 ${liked ? "fill-current" : ""}`} /> {likes}
+            </button>
+            <button
+              type="button"
+              className={`btn ${favorite ? "btn-sunny" : "btn-white"}`}
+              onClick={toggleFave}
+              aria-pressed={favorite}
+            >
+              <Star className={`h-5 w-5 ${favorite ? "fill-current" : ""}`} /> {favorite ? "Favorite!" : "Favorite"}
+            </button>
+          </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button type="button" className="btn btn-sunny" onClick={goFullscreen}>
-            <Expand className="h-5 w-5" /> Fullscreen
-          </button>
-          <button type="button" className="btn btn-white" onClick={restart}>
-            <RotateCcw className="h-5 w-5" /> Restart
-          </button>
-          <button
-            type="button"
-            className={`btn ${liked ? "btn-berry" : "btn-white"}`}
-            onClick={toggleLike}
-            aria-pressed={liked}
-          >
-            <Heart className={`h-5 w-5 ${liked ? "fill-current" : ""}`} /> {likes}
-          </button>
-          <button
-            type="button"
-            className={`btn ${favorite ? "btn-sunny" : "btn-white"}`}
-            onClick={toggleFave}
-            aria-pressed={favorite}
-          >
-            <Star className={`h-5 w-5 ${favorite ? "fill-current" : ""}`} /> {favorite ? "Favorite!" : "Favorite"}
-          </button>
-        </div>
-
-        <div className="card mt-5 p-5">
+        <div className="card mt-6 p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-2">
             <span className="chip">
               {categoryEmoji(game.category)} {game.category}
@@ -214,18 +222,16 @@ export function Player({
               <span className="chip"><Gamepad2 className="h-4 w-4" /> Controller ready</span>
             )}
           </div>
-          <h1 className="mt-3 text-3xl font-bold sm:text-4xl">{game.title}</h1>
-          {game.creator_name && <p className="mt-1 text-lg font-bold text-grape">Made by {game.creator_name} 🎨</p>}
-          {game.description && <p className="mt-3 whitespace-pre-line text-ink/80">{game.description}</p>}
+          {game.description && <p className="mt-4 max-w-prose whitespace-pre-line text-ink/85">{game.description}</p>}
           {game.controls && (
-            <div className="mt-4 rounded-2xl border-2 border-dashed border-ink/30 bg-cream p-4">
+            <div className="mt-5 rounded-xl border-2 border-dashed border-ink/30 bg-cream p-4">
               <h2 className="flex items-center gap-2 text-lg font-bold">
                 <Keyboard className="h-5 w-5" /> How to play
               </h2>
               <p className="mt-1 whitespace-pre-line">{game.controls}</p>
             </div>
           )}
-          <p className="mt-4 text-xs text-ink/50">
+          <p className="mt-4 text-xs text-ink/55">
             Tip: click the game first so it hears your keyboard. Press Esc to leave fullscreen.
           </p>
         </div>
@@ -235,7 +241,7 @@ export function Player({
         {game.has_scores ? (
           <Leaderboard board={board} userId={userId} label={game.score_label} />
         ) : (
-          <div className="card bg-mint/10 p-5 text-center">
+          <div className="card p-5 text-center">
             <div className="text-5xl" aria-hidden>🎉</div>
             <p className="mt-2 font-display text-lg font-semibold">Have fun playing!</p>
             <p className="mt-1 text-sm text-ink/60">This game doesn&apos;t have a leaderboard yet.</p>
@@ -246,35 +252,53 @@ export function Player({
   );
 }
 
+const RANKS = [
+  { text: "1st", color: "#ffc83d" },
+  { text: "2nd", color: "#c9d3e6" },
+  { text: "3rd", color: "#f0a36b" },
+];
+
 function Leaderboard({ board, userId, label }: { board: LeaderboardRow[]; userId: string; label: string }) {
-  const medals = ["🥇", "🥈", "🥉"];
   return (
-    <div className="card overflow-hidden">
-      <div className="flex items-center gap-2 border-b-[3px] border-ink bg-sunny px-5 py-3">
-        <Trophy className="h-6 w-6" />
-        <h2 className="text-xl font-bold">Leaderboard</h2>
+    <div className="overflow-hidden rounded-2xl border-2 border-ink bg-ink text-white shadow-pop lg:sticky lg:top-24">
+      <div className="flex items-center gap-2 border-b-2 border-white/10 px-5 py-4">
+        <Trophy className="h-6 w-6 text-sunny" />
+        <h2 className="font-marquee text-xl font-normal text-sunny">Leaderboard</h2>
       </div>
       {board.length === 0 ? (
-        <p className="p-5 text-center text-ink/70">No scores yet. Be the first! 🚀</p>
+        <p className="p-6 text-center text-white/75">No scores yet. Be the first! 🚀</p>
       ) : (
-        <ol className="divide-y-2 divide-ink/10">
-          {board.map((row, i) => (
-            <li
-              key={row.user_id}
-              className={`flex items-center gap-3 px-4 py-2.5 ${row.user_id === userId ? "bg-ocean/10" : ""}`}
-            >
-              <span className={`w-8 text-center font-display font-bold ${i < 3 ? "text-2xl" : "text-lg"}`}>{medals[i] ?? i + 1}</span>
-              <Avatar url={row.avatar_url} emoji={row.avatar_emoji} name={row.display_name} size={32} />
-              <span className="flex-1 truncate font-bold">
-                {row.display_name}
-                {row.user_id === userId && <span className="ml-1 text-xs text-ocean">(you)</span>}
-              </span>
-              <span className="font-display text-lg font-bold">{formatScore(row.best)}</span>
-            </li>
-          ))}
+        <ol>
+          {board.map((row, i) => {
+            const rank = RANKS[i];
+            const you = row.user_id === userId;
+            return (
+              <li
+                key={row.user_id}
+                className={`flex items-center gap-3 border-l-4 px-4 py-2.5 ${
+                  you ? "border-ocean bg-white/10" : "border-transparent"
+                }`}
+              >
+                <span
+                  className="w-11 shrink-0 font-marquee text-base uppercase"
+                  style={{ color: rank?.color ?? "rgb(255 255 255 / 0.55)" }}
+                >
+                  {rank?.text ?? `${i + 1}th`}
+                </span>
+                <Avatar url={row.avatar_url} emoji={row.avatar_emoji} name={row.display_name} size={30} />
+                <span className="min-w-0 flex-1 truncate font-semibold">
+                  {row.display_name}
+                  {you && <span className="ml-1 text-xs text-sky">(you)</span>}
+                </span>
+                <span className="font-marquee text-lg tabular-nums" style={{ color: rank?.color ?? "#fff" }}>
+                  {formatScore(row.best)}
+                </span>
+              </li>
+            );
+          })}
         </ol>
       )}
-      <p className="border-t-2 border-ink/10 px-5 py-2 text-xs text-ink/50">Best {label.toLowerCase()} for each player</p>
+      <p className="border-t-2 border-white/10 px-5 py-2.5 text-xs text-white/55">Best {label.toLowerCase()} for each player</p>
     </div>
   );
 }

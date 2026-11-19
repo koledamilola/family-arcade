@@ -1,22 +1,32 @@
 @import "tailwindcss";
 
+/*
+  Family Arcade: "rec-room arcade"
+  Night carpet for arriving, graph paper for browsing, games as cartridges.
+  Colour names are kept from the first version so every page picks up the new look.
+*/
 @theme {
-  --font-display: var(--font-fredoka), ui-rounded, "Segoe UI", system-ui, sans-serif;
-  --font-sans: var(--font-nunito), ui-rounded, "Segoe UI", system-ui, sans-serif;
+  --font-display: var(--font-lexend), ui-rounded, "Segoe UI", system-ui, sans-serif;
+  --font-sans: var(--font-lexend), ui-rounded, "Segoe UI", system-ui, sans-serif;
+  --font-marquee: var(--font-bungee), "Arial Black", system-ui, sans-serif;
+  --font-hand: var(--font-gochi), "Comic Sans MS", cursive;
 
-  --color-ink: #1e1b4b;
-  --color-cream: #fffbf0;
-  --color-sunny: #ffd23f;
-  --color-sky: #3bceac;
-  --color-ocean: #4d8bff;
-  --color-berry: #ee4266;
-  --color-grape: #8e44ec;
-  --color-mint: #0ead69;
-  --color-tangerine: #ff8c42;
+  --color-ink: #1b1446;       /* night carpet */
+  --color-cream: #f4f6ff;     /* graph paper */
+  --color-grid: #dce3fb;
+  --color-sunny: #ffc83d;     /* token gold */
+  --color-berry: #f0345a;     /* ticket red */
+  --color-ocean: #2a9df4;     /* joystick blue */
+  --color-grape: #6a3bf0;     /* cabinet violet */
+  --color-mint: #12a866;
+  --color-sky: #2fd3c0;
+  --color-tangerine: #ff7a3d;
+  --color-pink: #ff4fa3;
 
-  --shadow-pop: 4px 4px 0 0 var(--color-ink);
-  --shadow-pop-sm: 2px 2px 0 0 var(--color-ink);
-  --shadow-pop-lg: 6px 6px 0 0 var(--color-ink);
+  /* "Key" ledges: buttons and cards sit on a solid edge and press down into it. */
+  --shadow-pop: 0 4px 0 0 var(--ledge, var(--color-ink));
+  --shadow-pop-sm: 0 3px 0 0 var(--ledge, var(--color-ink));
+  --shadow-pop-lg: 0 7px 0 0 var(--ledge, var(--color-ink));
 }
 
 :root {
@@ -32,24 +42,35 @@ body {
   font-family: var(--font-sans);
   background-color: var(--color-cream);
   background-image:
-    radial-gradient(circle at 12% 18%, rgb(255 210 63 / 0.35) 0 2px, transparent 3px),
-    radial-gradient(circle at 78% 8%, rgb(238 66 102 / 0.3) 0 2px, transparent 3px),
-    radial-gradient(circle at 45% 60%, rgb(77 139 255 / 0.3) 0 2px, transparent 3px),
-    radial-gradient(circle at 90% 75%, rgb(14 173 105 / 0.3) 0 2px, transparent 3px);
-  background-size: 160px 160px;
+    linear-gradient(var(--color-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
 }
 
-h1, h2, h3, .font-display {
+h1 {
+  font-family: var(--font-marquee);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+h2, h3, .font-display {
   font-family: var(--font-display);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-ocean);
+  outline-offset: 2px;
 }
 
 @layer components {
   .card {
-    @apply rounded-3xl border-[3px] border-ink bg-white shadow-pop;
+    @apply rounded-2xl border-2 border-ink bg-white shadow-pop;
   }
+
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-2xl border-[3px] border-ink px-4 py-2 font-display text-base font-semibold shadow-pop-sm transition-all duration-100 select-none;
-    @apply hover:-translate-y-0.5 hover:shadow-pop active:translate-y-0.5 active:shadow-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border-2 border-ink px-4 py-2 font-display text-base font-semibold shadow-pop select-none;
+    transition: transform 80ms ease-out, box-shadow 80ms ease-out, filter 120ms;
+    @apply hover:brightness-105 active:translate-y-[4px] active:shadow-none;
     @apply disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-sunny { @apply bg-sunny text-ink; }
@@ -58,38 +79,74 @@ h1, h2, h3, .font-display {
   .btn-mint { @apply bg-mint text-white; }
   .btn-grape { @apply bg-grape text-white; }
   .btn-white { @apply bg-white text-ink; }
-  .btn-sm { @apply rounded-xl px-3 py-1 text-sm; }
+  .btn-sm { @apply rounded-lg px-3 py-1 text-sm shadow-pop-sm active:translate-y-[3px]; }
 
   .input {
-    @apply w-full rounded-2xl border-[3px] border-ink bg-white px-4 py-2.5 text-base outline-none transition;
-    @apply placeholder:text-ink/40 focus:shadow-pop-sm focus:ring-4 focus:ring-sunny/60;
+    @apply w-full rounded-xl border-2 border-ink bg-white px-4 py-2.5 text-base outline-none transition;
+    @apply placeholder:text-ink/40 focus:border-ocean focus:ring-4 focus:ring-ocean/25;
   }
   .label {
     @apply mb-1.5 block font-display text-sm font-semibold;
   }
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border-2 border-ink bg-white px-3 py-1 text-sm font-bold whitespace-nowrap transition;
+    @apply inline-flex items-center gap-1.5 rounded-full border-2 border-ink bg-white px-3 py-1 text-sm font-semibold whitespace-nowrap transition;
   }
 }
 
-@keyframes wiggle {
-  0%, 100% { transform: rotate(-3deg); }
-  50% { transform: rotate(3deg); }
+/* ---------- Arcade carpet ---------------------------------------------- */
+.carpet {
+  --ledge: #07051a;
+  color: #fff;
+  background-color: var(--color-ink);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180' fill='none' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round' opacity='.5'%3E%3Cpath d='M14 34q9-12 18 0t18 0' stroke='%23ff4fa3'/%3E%3Ccircle cx='136' cy='28' r='7' stroke='%232fd3c0'/%3E%3Ccircle cx='82' cy='78' r='3.5' fill='%23ffc83d' stroke='none'/%3E%3Cpath d='M28 128l12-20 12 20z' stroke='%238be04e'/%3E%3Cpath d='M140 112v18M131 121h18' stroke='%23ff7a3d'/%3E%3Cpath d='M86 150q9-12 18 0t18 0' stroke='%232a9df4'/%3E%3Ccircle cx='166' cy='76' r='3' fill='%23ff4fa3' stroke='none'/%3E%3Ccircle cx='18' cy='82' r='3' fill='%232fd3c0' stroke='none'/%3E%3Cpath d='M98 18l6 6m0-6l-6 6' stroke='%23ffc83d'/%3E%3Ccircle cx='66' cy='164' r='5' stroke='%23ffc83d'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
 }
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+
+/* A row of marquee light bulbs (static). */
+.bulbs {
+  height: 12px;
+  background:
+    radial-gradient(circle, var(--color-sunny) 0 3px, rgb(255 200 61 / 0.25) 3.5px 5px, transparent 5.5px) 0 50% / 22px 12px repeat-x,
+    var(--color-ink);
 }
+
+/* Grip ridges along the bottom of a cartridge. */
+.ridges {
+  background: repeating-linear-gradient(90deg, rgb(27 20 70 / 0.28) 0 3px, transparent 3px 9px);
+  border-radius: 3px;
+}
+
+/* A round, domed arcade button. */
+.arcade-btn {
+  @apply inline-grid shrink-0 place-items-center rounded-full border-2 border-ink font-display font-bold text-ink;
+  background:
+    radial-gradient(circle at 35% 28%, rgb(255 255 255 / 0.65) 0 14%, transparent 15%),
+    var(--color-sunny);
+  box-shadow: inset 0 -5px 0 rgb(27 20 70 / 0.18), 0 4px 0 0 var(--ledge, var(--color-ink));
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
+}
+.group:active .arcade-btn,
+.arcade-btn:active {
+  transform: translateY(4px);
+  box-shadow: inset 0 -3px 0 rgb(27 20 70 / 0.18), 0 0 0 0 var(--ledge, var(--color-ink));
+}
+
+/* The one orchestrated moment: the newest cartridge slots in on load. */
+@keyframes slot-in {
+  from { opacity: 0; transform: translateY(-28px) rotate(-2deg); }
+  to { opacity: 1; transform: translateY(0) rotate(1.5deg); }
+}
+.animate-slot-in { animation: slot-in 0.6s cubic-bezier(0.2, 0.9, 0.25, 1.15) 0.1s both; }
+
 @keyframes pop-in {
-  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
-.animate-wiggle { animation: wiggle 1.2s ease-in-out infinite; }
-.animate-float { animation: float 3s ease-in-out infinite; }
-.animate-pop-in { animation: pop-in 0.35s ease-out both; }
+.animate-pop-in { animation: pop-in 0.25s ease-out both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-wiggle, .animate-float, .animate-pop-in { animation: none; }
+  .animate-slot-in, .animate-pop-in { animation: none; }
+  .btn, .arcade-btn { transition: none; }
 }
 
 /* Fullscreen game area */
@@ -101,6 +158,7 @@ h1, h2, h3, .font-display {
 }
 .game-stage:fullscreen iframe {
   height: 100vh !important;
+  max-height: none !important;
   aspect-ratio: auto !important;
   border-radius: 0;
 }
