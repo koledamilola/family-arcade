@@ -46,18 +46,19 @@ export async function signUpWithEmail(_prev: FormState, form: FormData): Promise
   if (password.length < 8) return { error: "Pick a password with at least 8 characters." };
   const supabase = await createClient();
   const origin = await getOrigin();
+  const next = safeNext(str(form, "next"));
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: { display_name: name.slice(0, 40) },
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });
   if (error) return { error: error.message };
-  if (data.session) redirect("/pending");
+  if (data.session) redirect(next === "/" ? "/welcome" : next);
   return {
-    message: "Almost there! Check your email for a confirmation link. After that, a grown-up admin needs to approve you.",
+    message: "Almost there! Check your email for a confirmation link, then you can start or join your family.",
   };
 }
 
