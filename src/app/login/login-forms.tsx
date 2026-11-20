@@ -168,6 +168,7 @@ function GrownUpForms({ next }: { next: string }) {
         </form>
       ) : (
         <form action={upAction} className="space-y-3">
+          <input type="hidden" name="next" value={next} />
           {upState?.error && <Alert kind="error">{upState.error}</Alert>}
           {upState?.message ? (
             <Alert kind="ok">{upState.message}</Alert>
@@ -200,7 +201,7 @@ function GrownUpForms({ next }: { next: string }) {
           )}
         </form>
       )}
-      <p className="text-center text-xs text-ink/50">New accounts wait for a family admin to say yes.</p>
+      <p className="text-center text-xs text-ink/50">Parents: create an account to start your family&apos;s arcade. Got an invite? Sign up, then enter the code.</p>
     </div>
   );
 }

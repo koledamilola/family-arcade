@@ -1,21 +1,47 @@
-export type Role = "pending" | "player" | "admin";
+export type MemberRole = "parent" | "adult" | "kid";
 
 export type Profile = {
   id: string;
+  family_id: string | null;
+  member_role: MemberRole | null;
+  is_platform_admin: boolean;
   display_name: string;
   username: string | null;
   avatar_url: string | null;
   avatar_emoji: string;
-  role: Role;
-  is_kid: boolean;
   email: string | null;
   created_at: string;
 };
 
+export type Family = {
+  id: string;
+  name: string;
+  status: "active" | "suspended";
+  created_by: string | null;
+  created_at: string;
+};
+
+export type Invite = {
+  code: string;
+  family_id: string;
+  role: "parent" | "adult";
+  created_at: string;
+  expires_at: string;
+  used_by: string | null;
+  used_at: string | null;
+};
+
 export type GameKind = "html" | "zip" | "url";
+
+/**
+ * draft: being made · pending: a kid asked to publish, waiting for a parent ·
+ * published: on the family arcade · hidden: taken down by a parent · rejected: sent back
+ */
+export type GameStatus = "draft" | "pending" | "published" | "hidden" | "rejected";
 
 export type Game = {
   id: string;
+  family_id: string;
   slug: string;
   title: string;
   description: string;
@@ -34,8 +60,12 @@ export type Game = {
   lower_is_better: boolean;
   supports_touch: boolean;
   supports_gamepad: boolean;
-  published: boolean;
+  status: GameStatus;
+  review_note: string | null;
+  share_token: string;
+  share_enabled: boolean;
   play_count: number;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 };

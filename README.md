@@ -37,11 +37,14 @@ Built with **Next.js** (hosted on **Vercel**) and **Supabase** (sign-in, databas
 
 ### 3. Make yourself the first admin
 1. On the site, click **Create account** (under "or use email") and sign up with your email. (Confirm the email if Supabase sends you a link.)
-2. In Supabase **SQL Editor**, run this with your own email:
+2. Choose **Start a family**. You become that family's **parent**: you add kid accounts, invite other grown-ups with a code, and approve the games kids make.
+3. To manage *every* family on the site, make yourself the platform admin in Supabase **SQL Editor**:
    ```sql
-   update public.profiles set role = 'admin' where email = 'you@example.com';
+   update public.profiles set is_platform_admin = true where email = 'you@example.com';
    ```
-3. Refresh the site. You'll see the purple **Admin** button. From now on you can approve everyone else and make other admins from **Admin → People**.
+   Refresh, and you'll see the **Platform** button.
+
+> Upgrading from the single-family version? Run [`supabase/migrations/20261119000000_families.sql`](supabase/migrations/20261119000000_families.sql) once, then `supabase/schema.sql`.
 
 ### 4. Turn on Google sign-in (optional but recommended)
 1. Go to <https://console.cloud.google.com/> → create a project → **APIs & Services → OAuth consent screen**. Choose **External**, fill in the app name and your email, and save.

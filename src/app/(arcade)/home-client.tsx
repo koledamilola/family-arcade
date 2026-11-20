@@ -12,14 +12,14 @@ type Sort = "new" | "played" | "liked" | "az";
 
 export function HomeClient({
   name,
-  isAdmin,
+  isParent,
   games,
   likedIds,
   favoriteIds,
   initialView,
 }: {
   name: string;
-  isAdmin: boolean;
+  isParent: boolean;
   games: GameCard[];
   likedIds: string[];
   favoriteIds: string[];
@@ -156,7 +156,7 @@ export function HomeClient({
 
         {/* Shelf of cartridges */}
         {shown.length === 0 ? (
-          <EmptyState hasGames={games.length > 0} isAdmin={isAdmin} favorites={onlyFavorites} />
+          <EmptyState hasGames={games.length > 0} isParent={isParent} favorites={onlyFavorites} />
         ) : (
           <ul className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {shown.map((g) => (
@@ -327,7 +327,7 @@ function GameTile({
   );
 }
 
-function EmptyState({ hasGames, isAdmin, favorites }: { hasGames: boolean; isAdmin: boolean; favorites: boolean }) {
+function EmptyState({ hasGames, isParent, favorites }: { hasGames: boolean; isParent: boolean; favorites: boolean }) {
   return (
     <div className="card mt-6 flex flex-col items-center p-10 text-center">
       <div className="text-6xl" aria-hidden>
@@ -341,11 +341,11 @@ function EmptyState({ hasGames, isAdmin, favorites }: { hasGames: boolean; isAdm
           ? "Tap the star on any game to save it here."
           : hasGames
             ? "Try a different search or category."
-            : isAdmin
-              ? "Add the first game from the admin page."
-              : "A grown-up will add some soon. Check back!"}
+            : isParent
+              ? "Add the first game from the Family page."
+              : "A parent will add some soon. Check back!"}
       </p>
-      {!hasGames && isAdmin && (
+      {!hasGames && isParent && (
         <Link href="/admin/games/new" className="btn btn-mint mt-5">
           ➕ Add a game
         </Link>

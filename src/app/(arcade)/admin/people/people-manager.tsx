@@ -1,20 +1,42 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, KeyRound, Pencil, Trash2, UserPlus, X } from "lucide-react";
+import { Copy, KeyRound, Pencil, Trash2, UserPlus, X } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { AVATAR_EMOJIS } from "@/lib/catalog";
-import type { Profile, Role } from "@/lib/types";
-import { createKidAccount, deleteUser, resetKidPin, setRole, updateProfile } from "../actions";
+import type { Invite, Profile } from "@/lib/types";
+import {
+  createInvite,
+  createKidAccount,
+  removeMember,
+  renameFamily,
+  resetKidPin,
+  revokeInvite,
+  setMemberRole,
+  updateProfile,
+} from "../actions";
 
 type Res = { ok: boolean; error?: string };
+type Run = (key: string, fn: () => Promise<Res>, success?: string) => void;
 
-export function PeopleManager({ people, myId }: { people: Profile[]; myId: string }) {
+export function PeopleManager({
+  familyName,
+  people,
+  invites,
+  myId,
+  justCreated,
+}: {
+  familyName: string;
+  people: Profile[];
+  invites: Invite[];
+  myId: string;
+  justCreated: boolean;
+}) {
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [, startTransition] = useTransition();
 
-  function run(key: string, fn: () => Promise<Res>, success?: string) {
+  const run: Run = (key, fn, success) => {
     setBusy(key);
     setNotice(null);
     startTransition(async () => {
@@ -22,14 +44,23 @@ export function PeopleManager({ people, myId }: { people: Profile[]; myId: strin
       setNotice(res.ok ? (success ? { kind: "ok", text: success } : null) : { kind: "error", text: res.error ?? "Something went wrong." });
       setBusy(null);
     });
-  }
+  };
 
-  const pending = people.filter((p) => p.role === "pending");
-  const kids = people.filter((p) => p.is_kid);
-  const others = people.filter((p) => p.role !== "pending" && !p.is_kid);
+  const kids = people.filter((p) => p.member_role === "kid");
+  const grownUps = people.filter((p) => p.member_role !== "kid");
 
   return (
     <div className="space-y-8">
+      {justCreated && (
+        <div className="card animate-pop-in border-mint p-5">
+          <h2 className="text-2xl font-bold">🎉 Your family arcade is ready!</h2>
+          <p className="mt-1 text-ink/75">
+            Next: add an account for each kid below. They sign in with a username and PIN, so no email is needed. You
+            can invite another parent or grown-up too.
+          </p>
+        </div>
+      )}
+
       {notice && (
         <p
           role="alert"
@@ -41,87 +72,141 @@ export function PeopleManager({ people, myId }: { people: Profile[]; myId: strin
         </p>
       )}
 
-      {/* Waiting for approval */}
-      <section>
-        <h2 className="mb-3 text-2xl font-bold">
-          ⏳ Waiting for approval <span className="text-ink/50">({pending.length})</span>
-        </h2>
-        {pending.length === 0 ? (
-          <p className="card p-5 text-ink/60">Nobody is waiting right now. 🎉</p>
-        ) : (
-          <ul className="space-y-3">
-            {pending.map((p) => (
-              <li key={p.id} className="card flex flex-wrap items-center gap-3 border-sunny p-4">
-                <Avatar url={p.avatar_url} emoji={p.avatar_emoji} size={44} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-lg font-bold">{p.display_name}</p>
-                  <p className="truncate text-sm text-ink/60">
-                    {p.email} · asked {new Date(p.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <button className="btn btn-mint btn-sm" disabled={busy === p.id} onClick={() => run(p.id, () => setRole(p.id, "player"), `${p.display_name} can play now!`)}>
-                  <Check className="h-4 w-4" /> Approve
-                </button>
-                <button
-                  className="btn btn-white btn-sm"
-                  disabled={busy === p.id}
-                  onClick={() => {
-                    if (window.confirm(`Say no to ${p.display_name}? Their account will be deleted.`)) run(p.id, () => deleteUser(p.id));
-                  }}
-                >
-                  <X className="h-4 w-4" /> Decline
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <FamilyName name={familyName} busy={busy === "family"} run={run} />
 
       {/* Kids */}
       <section>
         <h2 className="mb-3 text-2xl font-bold">
-          🧒 Kid accounts <span className="text-ink/50">({kids.length})</span>
+          🧒 Kids <span className="text-ink/50">({kids.length})</span>
         </h2>
-        <p className="mb-3 text-ink/70">Kids sign in with a username and PIN, so no email is needed.</p>
-        <NewKidForm onCreate={(input) => run("new-kid", () => createKidAccount(input), `Account created! ${input.display_name} can sign in as "${input.username.toLowerCase()}".`)} busy={busy === "new-kid"} />
+        <p className="mb-3 text-ink/70">
+          Kids sign in with a username and PIN. Games they make in the Studio wait for a parent&apos;s OK before they
+          appear on the arcade.
+        </p>
+        <NewKidForm
+          onCreate={(input) =>
+            run("new-kid", () => createKidAccount(input), `Account created! ${input.display_name} can sign in as "${input.username.toLowerCase()}".`)
+          }
+          busy={busy === "new-kid"}
+        />
         <ul className="mt-4 space-y-3">
           {kids.map((p) => (
-            <PersonRow key={p.id} person={p} isMe={p.id === myId} busy={busy === p.id} run={run} />
+            <PersonRow key={p.id} person={p} isMe={false} busy={busy === p.id} run={run} />
           ))}
         </ul>
       </section>
 
-      {/* Everyone else */}
+      {/* Grown-ups */}
       <section>
         <h2 className="mb-3 text-2xl font-bold">
-          👨‍👩‍👧 Grown-ups & players <span className="text-ink/50">({others.length})</span>
+          👨‍👩‍👧 Grown-ups <span className="text-ink/50">({grownUps.length})</span>
         </h2>
+        <p className="mb-3 text-ink/70">
+          <strong>Parents</strong> run the family: they manage people and games and approve kids&apos; games.{" "}
+          <strong>Grown-ups</strong> play and make games, and their games go live straight away.
+        </p>
         <ul className="space-y-3">
-          {others.map((p) => (
+          {grownUps.map((p) => (
             <PersonRow key={p.id} person={p} isMe={p.id === myId} busy={busy === p.id} run={run} />
           ))}
         </ul>
+        <Invites invites={invites} busy={busy} run={run} />
       </section>
     </div>
   );
 }
 
-function PersonRow({
-  person: p,
-  isMe,
-  busy,
-  run,
-}: {
-  person: Profile;
-  isMe: boolean;
-  busy: boolean;
-  run: (key: string, fn: () => Promise<Res>, success?: string) => void;
-}) {
+function FamilyName({ name, busy, run }: { name: string; busy: boolean; run: Run }) {
+  const [value, setValue] = useState(name);
+  return (
+    <form
+      className="card flex flex-wrap items-end gap-3 p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        run("family", () => renameFamily(value), "Family name saved.");
+      }}
+    >
+      <label className="min-w-56 flex-1">
+        <span className="label">Family name</span>
+        <input className="input" value={value} onChange={(e) => setValue(e.target.value)} maxLength={60} required />
+      </label>
+      <button className="btn btn-ocean btn-sm" disabled={busy || value.trim() === name}>
+        Save
+      </button>
+    </form>
+  );
+}
+
+function Invites({ invites, busy, run }: { invites: Invite[]; busy: string | null; run: Run }) {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  async function copy(code: string) {
+    const link = `${window.location.origin}/welcome?code=${code}`;
+    try {
+      await navigator.clipboard.writeText(`Join our Family Arcade! Sign up at ${link} (invite code ${code})`);
+      setCopied(code);
+      window.setTimeout(() => setCopied(null), 2500);
+    } catch {
+      window.prompt("Copy this invite link:", link);
+    }
+  }
+
+  return (
+    <div className="card mt-4 border-dashed p-4">
+      <h3 className="text-lg font-bold">✉️ Invite a grown-up</h3>
+      <p className="text-sm text-ink/70">
+        Make a code and send it to them. They create an account, then enter the code. Each code works once, for 7 days.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          className="btn btn-grape btn-sm"
+          disabled={busy === "invite"}
+          onClick={() => run("invite", () => createInvite("parent"), "Parent invite created. Copy it below.")}
+        >
+          <UserPlus className="h-4 w-4" /> Invite a parent
+        </button>
+        <button
+          className="btn btn-white btn-sm"
+          disabled={busy === "invite"}
+          onClick={() => run("invite", () => createInvite("adult"), "Grown-up invite created. Copy it below.")}
+        >
+          <UserPlus className="h-4 w-4" /> Invite a grown-up
+        </button>
+      </div>
+      {invites.length > 0 && (
+        <ul className="mt-4 space-y-2">
+          {invites.map((inv) => (
+            <li key={inv.code} className="flex flex-wrap items-center gap-3 rounded-xl bg-cream px-3 py-2">
+              <code className="font-marquee text-lg tracking-widest">{inv.code}</code>
+              <span className="chip text-xs">{inv.role === "parent" ? "Parent" : "Grown-up"}</span>
+              <span className="text-xs text-ink/55">until {new Date(inv.expires_at).toLocaleDateString()}</span>
+              <span className="flex-1" />
+              <button className="btn btn-white btn-sm" onClick={() => copy(inv.code)}>
+                <Copy className="h-4 w-4" /> {copied === inv.code ? "Copied!" : "Copy invite"}
+              </button>
+              <button
+                className="btn btn-white btn-sm"
+                disabled={busy === inv.code}
+                onClick={() => run(inv.code, () => revokeInvite(inv.code))}
+                aria-label="Cancel invite"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function PersonRow({ person: p, isMe, busy, run }: { person: Profile; isMe: boolean; busy: boolean; run: Run }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(p.display_name);
   const [emoji, setEmoji] = useState(p.avatar_emoji);
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
+  const isKid = p.member_role === "kid";
 
   return (
     <li className={`card p-4 ${busy ? "opacity-60" : ""}`}>
@@ -131,25 +216,27 @@ function PersonRow({
           <p className="truncate text-lg font-bold">
             {p.display_name} {isMe && <span className="text-sm text-ocean">(you)</span>}
           </p>
-          <p className="truncate text-sm text-ink/60">{p.is_kid ? `username: ${p.username}` : p.email}</p>
+          <p className="truncate text-sm text-ink/60">{isKid ? `username: ${p.username}` : p.email}</p>
         </div>
-        <label className="flex items-center gap-2 text-sm font-bold">
-          <span className="sr-only">Role</span>
-          <select
-            className="input w-auto py-1.5 text-sm"
-            value={p.role}
-            disabled={isMe || busy}
-            onChange={(e) => run(p.id, () => setRole(p.id, e.target.value as Role), "Role updated.")}
-          >
-            <option value="player">🎮 Player</option>
-            <option value="admin">🛠️ Admin</option>
-            <option value="pending">⏳ Paused</option>
-          </select>
-        </label>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        {!isKid && (
+          <label className="flex items-center gap-2 text-sm font-bold">
+            <span className="sr-only">Role</span>
+            <select
+              className="input w-auto py-1.5 text-sm"
+              value={p.member_role ?? "adult"}
+              disabled={isMe || busy}
+              onChange={(e) => run(p.id, () => setMemberRole(p.id, e.target.value as "parent" | "adult"), "Role updated.")}
+            >
+              <option value="parent">👑 Parent</option>
+              <option value="adult">🙂 Grown-up</option>
+            </select>
+          </label>
+        )}
         <button className="btn btn-white btn-sm" onClick={() => setEditing((v) => !v)} aria-expanded={editing}>
           <Pencil className="h-4 w-4" /> Edit
         </button>
-        {p.is_kid && (
+        {isKid && (
           <button className="btn btn-white btn-sm" onClick={() => setShowPin((v) => !v)} aria-expanded={showPin}>
             <KeyRound className="h-4 w-4" /> PIN
           </button>
@@ -159,15 +246,17 @@ function PersonRow({
             className="btn btn-berry btn-sm"
             disabled={busy}
             onClick={() => {
-              if (window.confirm(`Delete ${p.display_name}'s account? Their scores and likes go too.`)) {
-                run(p.id, () => deleteUser(p.id), "Account deleted.");
-              }
+              const question = isKid
+                ? `Delete ${p.display_name}'s account? Their scores and likes go too.`
+                : `Remove ${p.display_name} from the family? They keep their login and can be invited back.`;
+              if (window.confirm(question)) run(p.id, () => removeMember(p.id), isKid ? "Account deleted." : "Removed from the family.");
             }}
           >
             <Trash2 className="h-4 w-4" />
-            <span className="sr-only">Delete</span>
+            <span className="sr-only">{isKid ? "Delete" : "Remove"}</span>
           </button>
         )}
+        </div>
       </div>
 
       {editing && (
@@ -274,6 +363,7 @@ function NewKidForm({
           />
         </label>
       </div>
+      <p className="text-sm text-ink/60">Usernames are shared across every family on Family Arcade, so pick something unique.</p>
       <EmojiPicker value={emoji} onChange={setEmoji} />
       <div className="flex gap-2">
         <button className="btn btn-mint" disabled={busy}>

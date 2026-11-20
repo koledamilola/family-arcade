@@ -1,24 +1,43 @@
 -- =====================================================================
---  Family Arcade - database setup
+--  Family Arcade - database setup (v2: many families)
 --  Paste this whole file into Supabase > SQL Editor > New query > Run.
 --  Safe to run more than once.
+--
+--  Structure:  Platform admin  ->  Families  ->  Parents (family admins)
+--                                             ->  Adults
+--                                             ->  Kids (username + PIN)
+--
+--  All writes go through the website's server (secret key) after it checks
+--  permissions. The rules below decide what each signed-in person can READ.
 -- =====================================================================
+
+-- ---------- Families --------------------------------------------------
+create table if not exists public.families (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null check (char_length(name) between 1 and 60),
+  status      text not null default 'active' check (status in ('active', 'suspended')),
+  created_by  uuid references auth.users (id) on delete set null,
+  created_at  timestamptz not null default now()
+);
 
 -- ---------- People ----------------------------------------------------
 create table if not exists public.profiles (
-  id            uuid primary key references auth.users (id) on delete cascade,
-  display_name  text not null default 'Player',
-  username      text unique,                 -- only for kid (username + PIN) accounts
-  avatar_url    text,
-  avatar_emoji  text not null default '🙂',
-  role          text not null default 'pending'
-                check (role in ('pending', 'player', 'admin')),
-  is_kid        boolean not null default false,
-  email         text,
-  created_at    timestamptz not null default now()
+  id                 uuid primary key references auth.users (id) on delete cascade,
+  family_id          uuid references public.families (id) on delete cascade,
+  member_role        text check (member_role in ('parent', 'adult', 'kid')),
+  is_platform_admin  boolean not null default false,
+  display_name       text not null default 'Player',
+  username           text unique,                 -- only for kid (username + PIN) accounts
+  avatar_url         text,
+  avatar_emoji       text not null default '🙂',
+  email              text,
+  created_at         timestamptz not null default now(),
+  constraint profiles_family_role check ((family_id is null) = (member_role is null))
 );
+create index if not exists profiles_family_idx on public.profiles (family_id);
 
--- Every new sign-up gets a profile that starts as "pending" (waiting for approval).
+-- Every new sign-up gets a profile with no family yet. They then create a
+-- family (becoming its parent) or join one with an invite code.
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
@@ -44,23 +63,48 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- Helper checks used by the security rules below.
-create or replace function public.is_approved() returns boolean
+-- ---------- Invites ---------------------------------------------------
+create table if not exists public.family_invites (
+  code        text primary key,
+  family_id   uuid not null references public.families (id) on delete cascade,
+  role        text not null check (role in ('parent', 'adult')),
+  created_by  uuid references public.profiles (id) on delete set null,
+  created_at  timestamptz not null default now(),
+  expires_at  timestamptz not null,
+  used_by     uuid references public.profiles (id) on delete set null,
+  used_at     timestamptz
+);
+create index if not exists family_invites_family_idx on public.family_invites (family_id);
+
+-- ---------- Helper checks used by the security rules ------------------
+-- The visitor's family, but only while that family is active.
+create or replace function public.my_family_id() returns uuid
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from public.profiles
-                 where id = auth.uid() and role in ('player', 'admin'));
+  select p.family_id from public.profiles p
+  join public.families f on f.id = p.family_id
+  where p.id = auth.uid() and f.status = 'active';
 $$;
 
-create or replace function public.is_admin() returns boolean
+create or replace function public.is_parent() returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from public.profiles
-                 where id = auth.uid() and role = 'admin');
+  select exists (
+    select 1 from public.profiles p join public.families f on f.id = p.family_id
+    where p.id = auth.uid() and p.member_role = 'parent' and f.status = 'active');
+$$;
+
+create or replace function public.is_platform_admin() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.profiles where id = auth.uid() and is_platform_admin);
 $$;
 
 -- ---------- Games -----------------------------------------------------
+-- status: draft (being made) -> pending (a kid asked to publish; waits for a parent)
+--         -> published (on the family arcade) | rejected (sent back with a note)
+--         hidden = taken off the arcade by a parent.
 create table if not exists public.games (
   id               uuid primary key default gen_random_uuid(),
-  slug             text not null unique,
+  family_id        uuid not null references public.families (id) on delete cascade,
+  slug             text not null,
   title            text not null,
   description      text not null default '',
   creator_name     text not null default '',
@@ -78,12 +122,18 @@ create table if not exists public.games (
   lower_is_better  boolean not null default false,
   supports_touch   boolean not null default false,
   supports_gamepad boolean not null default false,
-  published        boolean not null default true,
+  status           text not null default 'published'
+                   check (status in ('draft', 'pending', 'published', 'hidden', 'rejected')),
+  review_note      text,
+  share_token      text not null unique default replace(gen_random_uuid()::text, '-', ''),
+  share_enabled    boolean not null default true,
   play_count       integer not null default 0,
   created_by       uuid references public.profiles (id) on delete set null,
   created_at       timestamptz not null default now(),
-  updated_at       timestamptz not null default now()
+  updated_at       timestamptz not null default now(),
+  constraint games_family_slug unique (family_id, slug)
 );
+create index if not exists games_family_status_idx on public.games (family_id, status);
 
 create table if not exists public.likes (
   user_id    uuid not null references public.profiles (id) on delete cascade,
@@ -108,39 +158,58 @@ create table if not exists public.scores (
 );
 create index if not exists scores_game_idx on public.scores (game_id, score);
 
+-- Is this game on the visitor's own family arcade?
+create or replace function public.is_family_game(p_game_id uuid, p_published_only boolean default true)
+returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.games g
+    where g.id = p_game_id and g.family_id = public.my_family_id()
+      and (not p_published_only or g.status = 'published'));
+$$;
+
 -- Game list with like counts (follows the security rules of whoever asks).
-create or replace view public.game_cards with (security_invoker = true) as
+drop view if exists public.game_cards;
+create view public.game_cards with (security_invoker = true) as
   select g.*,
          (select count(*) from public.likes l where l.game_id = g.id)::int as like_count
   from public.games g;
 
 -- ---------- Security rules (Row Level Security) -----------------------
-alter table public.profiles  enable row level security;
-alter table public.games     enable row level security;
-alter table public.likes     enable row level security;
-alter table public.favorites enable row level security;
-alter table public.scores    enable row level security;
+alter table public.families       enable row level security;
+alter table public.profiles       enable row level security;
+alter table public.family_invites enable row level security;
+alter table public.games          enable row level security;
+alter table public.likes          enable row level security;
+alter table public.favorites      enable row level security;
+alter table public.scores         enable row level security;
 
-drop policy if exists "see own or approved see all" on public.profiles;
-create policy "see own or approved see all" on public.profiles
-  for select using (id = auth.uid() or public.is_approved());
-drop policy if exists "admins update profiles" on public.profiles;
-create policy "admins update profiles" on public.profiles
-  for update using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "members see their family" on public.families;
+create policy "members see their family" on public.families
+  for select using (id = public.my_family_id() or public.is_platform_admin());
 
-drop policy if exists "approved see published games" on public.games;
-create policy "approved see published games" on public.games
-  for select using (public.is_admin() or (published and public.is_approved()));
-drop policy if exists "admins manage games" on public.games;
-create policy "admins manage games" on public.games
-  for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "see own, family, or everyone if platform admin" on public.profiles;
+create policy "see own, family, or everyone if platform admin" on public.profiles
+  for select using (id = auth.uid() or family_id = public.my_family_id() or public.is_platform_admin());
 
-drop policy if exists "approved see likes" on public.likes;
-create policy "approved see likes" on public.likes
-  for select using (public.is_approved());
+drop policy if exists "parents see their invites" on public.family_invites;
+create policy "parents see their invites" on public.family_invites
+  for select using (public.is_parent() and family_id = public.my_family_id());
+
+drop policy if exists "family sees its games" on public.games;
+create policy "family sees its games" on public.games
+  for select using (
+    public.is_platform_admin()
+    or (family_id = public.my_family_id()
+        and (status = 'published' or created_by = auth.uid() or public.is_parent()))
+  );
+
+drop policy if exists "family sees likes" on public.likes;
+create policy "family sees likes" on public.likes
+  for select using (public.is_family_game(game_id, false));
 drop policy if exists "like as yourself" on public.likes;
 create policy "like as yourself" on public.likes
-  for insert with check (user_id = auth.uid() and public.is_approved());
+  for insert with check (user_id = auth.uid() and public.is_family_game(game_id));
 drop policy if exists "unlike as yourself" on public.likes;
 create policy "unlike as yourself" on public.likes
   for delete using (user_id = auth.uid());
@@ -150,26 +219,23 @@ create policy "see own favorites" on public.favorites
   for select using (user_id = auth.uid());
 drop policy if exists "favorite as yourself" on public.favorites;
 create policy "favorite as yourself" on public.favorites
-  for insert with check (user_id = auth.uid() and public.is_approved());
+  for insert with check (user_id = auth.uid() and public.is_family_game(game_id));
 drop policy if exists "unfavorite as yourself" on public.favorites;
 create policy "unfavorite as yourself" on public.favorites
   for delete using (user_id = auth.uid());
 
-drop policy if exists "approved see scores" on public.scores;
-create policy "approved see scores" on public.scores
-  for select using (public.is_approved());
+drop policy if exists "family sees scores" on public.scores;
+create policy "family sees scores" on public.scores
+  for select using (public.is_family_game(game_id, false));
 drop policy if exists "score as yourself" on public.scores;
 create policy "score as yourself" on public.scores
-  for insert with check (user_id = auth.uid() and public.is_approved());
-drop policy if exists "admins delete scores" on public.scores;
-create policy "admins delete scores" on public.scores
-  for delete using (public.is_admin());
+  for insert with check (user_id = auth.uid() and public.is_family_game(game_id));
 
 -- ---------- Handy functions ------------------------------------------
 create or replace function public.record_play(p_game_id uuid) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  if not public.is_approved() then return; end if;
+  if not public.is_family_game(p_game_id) then return; end if;
   update public.games set play_count = play_count + 1 where id = p_game_id;
 end;
 $$;
@@ -181,7 +247,7 @@ returns table (user_id uuid, display_name text, avatar_emoji text, avatar_url te
 language plpgsql stable security definer set search_path = public as $$
 declare lower_better boolean;
 begin
-  if not public.is_approved() then return; end if;
+  if not public.is_family_game(p_game_id, false) then return; end if;
   select g.lower_is_better into lower_better from public.games g where g.id = p_game_id;
   lower_better := coalesce(lower_better, false);
   return query
@@ -226,8 +292,8 @@ values ('games', 'games', true), ('thumbnails', 'thumbnails', true)
 on conflict (id) do update set public = excluded.public;
 
 -- =====================================================================
---  AFTER you sign in to the site for the first time, make yourself admin
---  by running this (with your own email address):
+--  AFTER you sign up on the site and create your family, make yourself
+--  the platform admin (can see and manage every family) with:
 --
---  update public.profiles set role = 'admin' where email = 'you@example.com';
+--  update public.profiles set is_platform_admin = true where email = 'you@example.com';
 -- =====================================================================

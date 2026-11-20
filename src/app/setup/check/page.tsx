@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { Logo } from "@/components/Logo";
-import { requireAdmin } from "@/lib/auth";
+import { requirePlatformAdmin } from "@/lib/auth";
 import { isConfigured } from "@/lib/env";
 
 // Diagnostic page: shows which Supabase settings this deployment can see,
@@ -41,7 +41,7 @@ export default async function CheckPage() {
   await connection();
   // Once the site works, only admins may see this (it shows parts of the keys).
   // While it's not set up yet there's no login, so it stays open to help fix it.
-  if (isConfigured()) await requireAdmin();
+  if (isConfigured()) await requirePlatformAdmin();
   // Written out in full on purpose so values match exactly what the rest of the site uses.
   const vars: Check[] = [
     { name: "NEXT_PUBLIC_SUPABASE_URL", value: process.env.NEXT_PUBLIC_SUPABASE_URL },

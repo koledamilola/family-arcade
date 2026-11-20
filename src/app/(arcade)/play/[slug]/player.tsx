@@ -25,12 +25,15 @@ export function Player({
   initialLiked,
   initialFavorite,
   initialBoard,
+  guest = false,
 }: {
   game: GameCard;
   userId: string;
   initialLiked: boolean;
   initialFavorite: boolean;
   initialBoard: LeaderboardRow[];
+  /** Someone playing from a share link: no account, so no likes, favorites or leaderboard. */
+  guest?: boolean;
 }) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -55,8 +58,8 @@ export function Player({
       : `/g/${game.storage_prefix}/${(game.entry_path ?? "index.html").split("/").map(encodeURIComponent).join("/")}`;
 
   useEffect(() => {
-    recordPlay(game.id).catch(() => {});
-  }, [game.id]);
+    if (!guest) recordPlay(game.id).catch(() => {});
+  }, [game.id, guest]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -75,7 +78,7 @@ export function Player({
           if (json.length < 4_000_000) localStorage.setItem(SAVE_KEY(game.id, userId), json);
         } catch {}
       }
-      if (msg.type === "score" && game.has_scores && typeof msg.score === "number") {
+      if (msg.type === "score" && game.has_scores && !guest && typeof msg.score === "number") {
         const score = msg.score;
         startTransition(async () => {
           try {
@@ -89,16 +92,16 @@ export function Player({
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [game.id, game.has_scores, game.score_label, userId, showToast]);
+  }, [game.id, game.has_scores, game.score_label, userId, showToast, guest]);
 
   // Refresh the leaderboard now and then so you can see family members' scores.
   useEffect(() => {
-    if (!game.has_scores) return;
+    if (!game.has_scores || guest) return;
     const t = window.setInterval(() => {
       if (document.visibilityState === "visible") getLeaderboard(game.id).then(setBoard).catch(() => {});
     }, 30_000);
     return () => window.clearInterval(t);
-  }, [game.id, game.has_scores]);
+  }, [game.id, game.has_scores, guest]);
 
   function focusGame() {
     frameRef.current?.focus();
@@ -189,6 +192,7 @@ export function Player({
               <RotateCcw className="h-5 w-5" /> Restart
             </button>
             <span className="flex-1" />
+            {!guest && (<>
             <button
               type="button"
               className={`btn ${liked ? "btn-berry" : "btn-white"}`}
@@ -206,6 +210,7 @@ export function Player({
             >
               <Star className={`h-5 w-5 ${favorite ? "fill-current" : ""}`} /> {favorite ? "Favorite!" : "Favorite"}
             </button>
+            </>)}
           </div>
         </div>
 
@@ -214,7 +219,7 @@ export function Player({
             <span className="chip">
               {categoryEmoji(game.category)} {game.category}
             </span>
-            <span className="chip">🔥 {game.play_count.toLocaleString()} plays</span>
+            {!guest && <span className="chip">🔥 {game.play_count.toLocaleString()} plays</span>}
             {game.supports_touch && (
               <span className="chip"><Smartphone className="h-4 w-4" /> Touch friendly</span>
             )}
@@ -238,7 +243,16 @@ export function Player({
       </section>
 
       <aside>
-        {game.has_scores ? (
+        {guest ? (
+          <div className="card p-5 text-center">
+            <div className="text-5xl" aria-hidden>🕹️</div>
+            <p className="mt-2 font-display text-lg font-semibold">Made in a Family Arcade</p>
+            <p className="mt-1 text-sm text-ink/60">
+              Families make games together here, with an AI helper that guides every step.
+            </p>
+            <a href="/login" className="btn btn-mint btn-sm mt-4">Start your family&apos;s arcade</a>
+          </div>
+        ) : game.has_scores ? (
           <Leaderboard board={board} userId={userId} label={game.score_label} />
         ) : (
           <div className="card p-5 text-center">

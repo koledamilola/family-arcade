@@ -38,7 +38,7 @@ export function GameForm({ game }: { game?: Game }) {
   const [lowerBetter, setLowerBetter] = useState(game?.lower_is_better ?? false);
   const [touch, setTouch] = useState(game?.supports_touch ?? false);
   const [gamepad, setGamepad] = useState(game?.supports_gamepad ?? false);
-  const [published, setPublished] = useState(game?.published ?? true);
+  const [published, setPublished] = useState(game ? game.status === "published" : true);
 
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);

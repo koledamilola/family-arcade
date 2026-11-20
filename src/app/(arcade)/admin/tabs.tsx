@@ -7,10 +7,11 @@ export function AdminTabs({ pendingCount }: { pendingCount: number }) {
   const path = usePathname();
   const tabs = [
     { href: "/admin", label: "🎮 Games", active: path === "/admin" || path.startsWith("/admin/games") },
-    { href: "/admin/people", label: "👨‍👩‍👧 People", active: path.startsWith("/admin/people"), badge: pendingCount },
+    { href: "/admin/approvals", label: "✅ Approvals", active: path.startsWith("/admin/approvals"), badge: pendingCount },
+    { href: "/admin/people", label: "👨‍👩‍👧 People", active: path.startsWith("/admin/people") },
   ];
   return (
-    <nav className="flex gap-2 rounded-2xl border-[3px] border-ink bg-white p-1.5 shadow-pop-sm">
+    <nav className="flex flex-wrap gap-2 rounded-2xl border-[3px] border-ink bg-white p-1.5 shadow-pop-sm">
       {tabs.map((t) => (
         <Link
           key={t.href}

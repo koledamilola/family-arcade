@@ -2,44 +2,76 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createHmac } from "node:crypto";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getSecretKey } from "@/lib/env";
-import type { Profile } from "@/lib/types";
+import type { Family, MemberRole, Profile } from "@/lib/types";
 
-/** The signed-in visitor and their profile (null if signed out). */
+/** The signed-in visitor, their profile and their family (null if signed out). */
 export const getViewer = cache(async () => {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   const user = data.user;
   if (!user) return null;
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle<Profile>();
-  return { user, profile };
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle<Profile>();
+  let family: Family | null = null;
+  if (profile?.family_id) {
+    // Only returns the family while it is active (see my_family_id() in schema.sql).
+    const { data: fam } = await supabase.from("families").select("*").eq("id", profile.family_id).maybeSingle<Family>();
+    family = fam && fam.status === "active" ? fam : null;
+  }
+  return { user, profile, family };
 });
 
-/** For pages that need an approved player. Sends others to login / waiting room. */
-export async function requirePlayer() {
+export type Member = {
+  user: User;
+  profile: Profile & { family_id: string; member_role: MemberRole };
+  family: Family;
+};
+
+function asMember(v: Awaited<ReturnType<typeof getViewer>>): Member | null {
+  if (!v?.profile?.family_id || !v.profile.member_role || !v.family) return null;
+  return v as Member;
+}
+
+/** For pages that need someone in an active family. Others go to login / welcome. */
+export async function requireMember(): Promise<Member> {
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
-  if (!viewer.profile || viewer.profile.role === "pending") redirect("/pending");
-  return { user: viewer.user, profile: viewer.profile };
+  const member = asMember(viewer);
+  if (!member) redirect("/welcome");
+  return member;
 }
 
-export async function requireAdmin() {
-  const viewer = await requirePlayer();
-  if (viewer.profile.role !== "admin") redirect("/");
-  return viewer;
+export async function requireParent(): Promise<Member> {
+  const member = await requireMember();
+  if (member.profile.member_role !== "parent") redirect("/");
+  return member;
 }
 
-/** For server actions: throws instead of redirecting. */
-export async function assertAdmin() {
+export async function requirePlatformAdmin() {
   const viewer = await getViewer();
-  if (!viewer?.profile || viewer.profile.role !== "admin") {
-    throw new Error("Only admins can do that.");
-  }
+  if (!viewer) redirect("/login");
+  if (!viewer.profile?.is_platform_admin) redirect("/");
+  return { user: viewer.user, profile: viewer.profile, family: viewer.family };
+}
+
+/** For server actions: throw instead of redirecting. */
+export async function assertMember(): Promise<Member> {
+  const member = asMember(await getViewer());
+  if (!member) throw new Error("Please sign in again.");
+  return member;
+}
+
+export async function assertParent(): Promise<Member> {
+  const member = await assertMember();
+  if (member.profile.member_role !== "parent") throw new Error("Only parents can do that.");
+  return member;
+}
+
+export async function assertPlatformAdmin() {
+  const viewer = await getViewer();
+  if (!viewer?.profile?.is_platform_admin) throw new Error("Only the platform admin can do that.");
   return { user: viewer.user, profile: viewer.profile };
 }
 
@@ -57,7 +89,7 @@ export function kidEmail(username: string) {
  * the only way to try a PIN is through this site's login, which is rate limited.
  *
  * Uses KID_PIN_SECRET if set, otherwise the Supabase secret key. If that secret
- * ever changes, kids need their PIN reset by an admin.
+ * ever changes, kids need their PIN reset by a parent.
  */
 export function kidPassword(pin: string) {
   const secret = process.env.KID_PIN_SECRET || getSecretKey();
