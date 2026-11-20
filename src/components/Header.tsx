@@ -13,6 +13,12 @@ export function Header({ profile, familyName }: { profile: Profile; familyName?:
         <Link href="/" className="mr-auto min-w-0 rounded-full" aria-label="Home">
           <Logo />
         </Link>
+        {profile.family_id && (
+          <Link href="/studio" className="btn btn-sunny btn-sm border-white/20">
+            <span aria-hidden>🛠️</span>
+            <span className="hidden sm:inline">Studio</span>
+          </Link>
+        )}
         {profile.is_platform_admin && (
           <Link href="/platform" className="btn btn-white btn-sm border-white/20">
             <span aria-hidden>🌐</span>

@@ -63,6 +63,7 @@ export async function testConnection(): Promise<Result<{ reply: string; cost: nu
   try {
     const member = await assertParent();
     const res = await runAI(member, "test", {
+      tier: "coach",
       system: "You are the friendly helper inside Family Arcade, an app where families make games together.",
       messages: [{ role: "user", content: "Say hello to our family in one short, cheerful sentence." }],
       maxTokens: 2000,

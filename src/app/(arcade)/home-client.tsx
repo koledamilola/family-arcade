@@ -105,6 +105,9 @@ export function HomeClient({
                 , played <Num>{totalPlays}</Num> {totalPlays === 1 ? "time" : "times"}.
               </p>
             )}
+            <Link href="/studio" className="btn btn-sunny mt-6 py-3 text-lg">
+              🛠️ Make your own game
+            </Link>
           </div>
           {newest && <Spotlight game={newest} />}
         </div>

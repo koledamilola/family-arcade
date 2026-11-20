@@ -2,7 +2,7 @@ import "server-only";
 import type { Member } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/server";
 import { decryptSecret } from "./crypto";
-import { type ChatRequest, type ChatResult, type Provider, chat } from "./providers";
+import { type ChatRequest, type ChatResult, type Provider, chat, modelFor } from "./providers";
 
 export type Connection = {
   family_id: string;
@@ -87,22 +87,23 @@ export async function runAI(member: Member, purpose: string, req: ChatRequest): 
     );
   }
 
+  const use = modelFor(conn.provider, conn.model, { price_in: Number(conn.price_in), price_out: Number(conn.price_out) }, req.tier);
+
   let result: ChatResult;
   try {
-    result = await chat(conn.provider, decryptSecret(conn.key_ciphertext), conn.model, req);
+    result = await chat(conn.provider, decryptSecret(conn.key_ciphertext), use.model, req);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await admin.from("ai_connections").update({ last_error: message, last_checked_at: new Date().toISOString() }).eq("family_id", familyId);
     throw new AIUnavailable(isKid ? "The AI helper isn't working right now. Tell a parent so they can check it." : message);
   }
 
-  const costUsd =
-    result.costUsd ?? (result.inputTokens * Number(conn.price_in) + result.outputTokens * Number(conn.price_out)) / 1_000_000;
+  const costUsd = result.costUsd ?? (result.inputTokens * use.price_in + result.outputTokens * use.price_out) / 1_000_000;
   await admin.from("ai_usage").insert({
     family_id: familyId,
     user_id: member.user.id,
     provider: conn.provider,
-    model: conn.model,
+    model: use.model,
     purpose,
     input_tokens: result.inputTokens,
     output_tokens: result.outputTokens,

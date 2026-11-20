@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { requireParent } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getConnection, limitFor, monthlySpend } from "@/lib/ai";
-import { PROVIDERS } from "@/lib/ai/providers";
+import { PROVIDERS, modelFor } from "@/lib/ai/providers";
 import { AIConnect, type MemberSpend } from "./ai-connect";
 
 export const metadata: Metadata = { title: "AI" };
@@ -44,6 +44,7 @@ export default async function AIPage(props: PageProps<"/admin/ai">) {
               provider: conn.provider,
               providerLabel: PROVIDERS[conn.provider].label,
               model: conn.model,
+              coachModel: modelFor(conn.provider, conn.model, { price_in: 0, price_out: 0 }, "coach").model,
               keyHint: conn.key_hint,
               connectedAt: conn.connected_at,
               lastError: conn.last_error,
