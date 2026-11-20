@@ -9,6 +9,7 @@ export function AdminTabs({ pendingCount }: { pendingCount: number }) {
     { href: "/admin", label: "🎮 Games", active: path === "/admin" || path.startsWith("/admin/games") },
     { href: "/admin/approvals", label: "✅ Approvals", active: path.startsWith("/admin/approvals"), badge: pendingCount },
     { href: "/admin/people", label: "👨‍👩‍👧 People", active: path.startsWith("/admin/people") },
+    { href: "/admin/ai", label: "🤖 AI", active: path.startsWith("/admin/ai") },
   ];
   return (
     <nav className="flex flex-wrap gap-2 rounded-2xl border-[3px] border-ink bg-white p-1.5 shadow-pop-sm">
