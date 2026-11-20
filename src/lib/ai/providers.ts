@@ -41,13 +41,33 @@ export const PROVIDERS: Record<
   },
 };
 
-/** Models games are built with, best first. For OpenAI/Gemini keys we use the first one the key can access. */
+/**
+ * Two jobs, two price points, to make credit last:
+ *  - "build": writes or rewrites the game's code. Needs a strong coding model.
+ *  - "coach": asks questions, plans, explains. A small fast model is plenty.
+ * Build models are listed best first; for OpenAI/Gemini keys we use the first one the key can access.
+ */
 const PREFERRED_MODELS: Record<Provider, string[]> = {
-  openrouter: ["anthropic/claude-opus-5.5"],
-  anthropic: ["claude-opus-5-5"],
-  openai: ["gpt-6.2-sol", "gpt-6.1-sol", "gpt-6.1-terra"],
-  google: ["gemini-4-carbon", "gemini-4-argon", "gemini-4-hydrogen"],
+  openrouter: ["anthropic/claude-sonnet-5.5"],
+  anthropic: ["claude-sonnet-5-5"],
+  openai: ["gpt-6.1-terra", "gpt-6.2-sol", "gpt-6.1-sol"],
+  google: ["gemini-4-hydrogen", "gemini-4-carbon", "gemini-4-argon"],
 };
+
+/** The cheap coach model, with prices (USD per 1M tokens). OpenAI/Gemini keys coach with the build model. */
+const COACH_MODELS: Partial<Record<Provider, { model: string; price_in: number; price_out: number }>> = {
+  openrouter: { model: "anthropic/claude-haiku-5.5", price_in: 0.1, price_out: 0.5 },
+  anthropic: { model: "claude-haiku-5-5", price_in: 0.1, price_out: 0.5 },
+};
+
+export type Tier = "build" | "coach";
+
+/** Which model (and price) to use for a job, given the family's connection. */
+export function modelFor(provider: Provider, buildModel: string, buildPrices: { price_in: number; price_out: number }, tier: Tier) {
+  const coach = COACH_MODELS[provider];
+  if (tier === "coach" && coach) return coach;
+  return { model: buildModel, ...buildPrices };
+}
 
 /** OpenRouter's public catalog has per-token prices for every provider's models. */
 async function catalogPrice(openRouterId: string) {
@@ -78,7 +98,7 @@ export async function verifyKey(provider: Provider, key: string): Promise<Verifi
     const res = await fetch("https://openrouter.ai/api/v1/key", { headers: { Authorization: `Bearer ${key}` }, signal: timeout });
     if (!res.ok) throw new Error(friendly(res.status, company));
     const model = PREFERRED_MODELS.openrouter[0];
-    return { model, ...((await catalogPrice(model)) ?? { price_in: 4, price_out: 20 }) };
+    return { model, ...((await catalogPrice(model)) ?? { price_in: 2, price_out: 10 }) };
   }
 
   if (provider === "anthropic") {
@@ -89,7 +109,7 @@ export async function verifyKey(provider: Provider, key: string): Promise<Verifi
       if (e instanceof Anthropic.APIError) throw new Error(friendly(e.status ?? 500, company));
       throw new Error(`Couldn't reach ${company}. Check your internet connection and try again.`);
     }
-    return { model: PREFERRED_MODELS.anthropic[0], price_in: 4, price_out: 20 };
+    return { model: PREFERRED_MODELS.anthropic[0], price_in: 2, price_out: 10 };
   }
 
   if (provider === "openai") {
@@ -111,6 +131,8 @@ export async function verifyKey(provider: Provider, key: string): Promise<Verifi
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 export type ChatRequest = {
+  /** "coach" for questions and planning (cheap model), "build" for writing game code. */
+  tier: Tier;
   system: string;
   messages: ChatMessage[];
   maxTokens: number;
@@ -136,8 +158,8 @@ export async function chat(provider: Provider, key: string, model: string, req: 
           system: req.system,
           messages: req.messages,
           output_config: { effort: req.effort },
-          betas: ["server-side-fallback-2026-07-01"],
-          fallbacks: "default",
+          // Server-side refusal fallback (not offered for Haiku models).
+          ...(model.includes("haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
         })
         .finalMessage();
       if (message.stop_reason === "refusal") throw new Error("The AI couldn't help with that request. Try describing the game differently.");

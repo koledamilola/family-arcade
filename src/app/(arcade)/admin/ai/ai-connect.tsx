@@ -19,6 +19,17 @@ export type MemberSpend = {
 
 type Notice = { kind: "ok" | "error"; text: string } | null;
 
+/** "anthropic/claude-sonnet-5.5" -> "Claude Sonnet 5.5" */
+function shortModel(id: string) {
+  return id
+    .replace(/^[a-z]+\//, "")
+    .replace(/-(\d+)-(\d+)$/, " $1.$2")
+    .split(/[-\s]/)
+    .map((w) => (/^\d/.test(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(" ")
+    .replace(/^Gpt/, "GPT");
+}
+
 const money = (n: number) => (n > 0 && n < 0.01 ? "<$0.01" : `$${n.toFixed(2)}`);
 
 export function AIConnect({
@@ -29,7 +40,15 @@ export function AIConnect({
   members,
   notice: initialNotice,
 }: {
-  connection: { provider: Provider; providerLabel: string; model: string; keyHint: string; connectedAt: string; lastError: string | null } | null;
+  connection: {
+    provider: Provider;
+    providerLabel: string;
+    model: string;
+    coachModel: string;
+    keyHint: string;
+    connectedAt: string;
+    lastError: string | null;
+  } | null;
   providers: { id: Provider; label: string; company: string; keyUrl: string; steps: string[] }[];
   kidDefault: number;
   totalSpent: number;
@@ -100,8 +119,17 @@ function Connected({
         <div className="min-w-0 flex-1">
           <p className="text-xl font-bold">Connected to {c.providerLabel}</p>
           <p className="text-sm text-ink/65">
-            Key {c.keyHint} · builds with <strong>{c.model}</strong> · since {new Date(c.connectedAt).toLocaleDateString()}
+            Key {c.keyHint} · connected {new Date(c.connectedAt).toLocaleDateString()}
           </p>
+          <ul className="mt-2 space-y-0.5 text-sm text-ink/75">
+            <li>
+              💬 Plans and chats with <strong>{shortModel(c.coachModel)}</strong>
+              {c.coachModel !== c.model && <span className="text-ink/55"> (low-cost)</span>}
+            </li>
+            <li>
+              🛠️ Writes game code with <strong>{shortModel(c.model)}</strong>
+            </li>
+          </ul>
           {c.lastError && <p className="mt-2 text-sm font-semibold text-berry">Last problem: {c.lastError}</p>}
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
